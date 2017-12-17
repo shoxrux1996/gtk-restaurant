@@ -153,7 +153,7 @@ MYSQL_RES* getDishes(char* category){
 void connectToDatabase(){    
   char *server = "127.0.0.1";
   char *user = "root";
-  char *password = "8566";
+  char *password = "1";
   char *database = "os_project";
 
   conn = mysql_init(NULL);
@@ -253,6 +253,7 @@ void *connection_handler(void *socket){
   char request_res_string[256];
 
   while(recv(new_socket, query, sizeof(query), 0)){
+    
     sscanf(query, "%s", query_type);
     printf("Query type is: |%s|\n", query_type);
     printf("Query is: |%s|\n", query);
@@ -265,9 +266,9 @@ void *connection_handler(void *socket){
       num_fields = mysql_num_fields(res);
     
     
-
+      
       while(row = mysql_fetch_row(res)){
-
+        memset(row_string, 0, sizeof(row_string));
         for (int i = 0; i < num_fields; ++i)
         {
           sprintf(row_string, "%s '%s'", row_string, row[i]);
@@ -276,10 +277,10 @@ void *connection_handler(void *socket){
         send(new_socket, row_string, sizeof(row_string), 0);
       }
     }else{
-      if(res == NULL){
+      if(num_rows <= 0){
         req_result.accepted = false;
         strcpy(req_result.comment, mysql_error(conn));
-        printf("Comment: %s\n", req_result.comment);
+        //printf("Comment: %s\n", req_result.comment);
       }else{
         req_result.accepted = true;
         strcpy(req_result.comment, "Successful!");
@@ -290,8 +291,9 @@ void *connection_handler(void *socket){
     }
 
       
+      
     
-    
+    memset(query, 0, sizeof(query));
   }
   
   return 0;

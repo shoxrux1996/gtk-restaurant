@@ -1,16 +1,29 @@
 #include <gtk/gtk.h>
 #include <glib.h>
 #include <glib/gprintf.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <stdbool.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include <stdio.h>
 #include <string.h> 
 
 
+#define PORT 8080
+#define ANSI_COLOR_RED     "\x1b[31m"
+#define ANSI_COLOR_GREEN   "\x1b[32m"
+#define ANSI_COLOR_RESET   "\x1b[0m"
+#define ANSI_COLOR_BLUE    "\x1b[34m"
+
 GtkWidget *window; //global window
 GtkWidget *grid; 
-char *numb = 0; //number of messages
+char numb[10] = "0"; //number of messages
 // global fixed container
-
-
 
 struct log
 {
@@ -78,13 +91,76 @@ void chooseFood(GtkWidget *widget, gpointer i);
 void orderFood(GtkWidget *widget);
 void submitOrder(GtkWidget *widget, gpointer order);
 
+typedef struct{
+  int ID;
+  char name[255];
+  char phone[12];
+  char email[255];
+  char password[255];
+} User;
+
+typedef struct{
+  int day;
+  int month;
+  int year;
+
+  int hour;
+  int minute;
+
+  char format[20];
+} Time;
+
+typedef struct{
+  int ID;
+  int price;
+  char name[255];
+} Meal;
+
+typedef struct{
+  bool accepted;
+  char comment[255]; 
+} Request_result;
+
+void menu();
+void login_menu();
+void register_menu();
+void dashboard_menu(User *user);
+User* authenticate(char *email, char *password);
+void booking_menu(User *user);
+void ordering_food_menu(User *user);
+int choose_meal(User *user, int);
+void messages_menu(User *user);
+Request_result request_booking(User *, int, Time, char *);
+Request_result request_order(User *, int, int, char *);
+Request_result request_register(char *, char *, char *, char *);
+int createSocket();
+int server_socket;
+
 int main(int argc, char *argv[]) {
+
+  server_socket = createSocket();
   gtk_init(&argc, &argv);
   window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
   gtk_window_set_title(GTK_WINDOW(window), "Restaurant Management System");
   gtk_window_set_default_size(GTK_WINDOW(window), 600, 400);
   gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
   gtk_container_set_border_width(GTK_CONTAINER(window), 15);
+
+   /*---- CSS ------------------*/
+  GtkCssProvider *provider;
+  GdkDisplay *display;
+  GdkScreen *screen;
+  
+  provider = gtk_css_provider_new ();
+  display = gdk_display_get_default ();
+  screen = gdk_display_get_default_screen (display);
+  gtk_style_context_add_provider_for_screen (screen, GTK_STYLE_PROVIDER (provider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+ 
+  const gchar* style = "style.css";
+  GError *error = 0;
+  gtk_css_provider_load_from_file(provider, g_file_new_for_path(style), &error);
+  g_object_unref (provider);
+  /*---------------------------*/
 
   grid = gtk_grid_new ();  
   g_object_ref_sink(grid);
@@ -125,7 +201,7 @@ void login(GtkWidget *widget) {
   label1 = gtk_label_new("Email");
   label2 = gtk_label_new("Password");
 
-  struct log en; 
+ 
 
   entry1 = gtk_entry_new();
   entry2 = gtk_entry_new();
@@ -143,7 +219,8 @@ void login(GtkWidget *widget) {
   gtk_grid_attach(GTK_GRID(grid), entry2, 1, 1, 1, 1);
   gtk_grid_attach(GTK_GRID(grid), loginBut, 1, 2, 1, 1);
   gtk_grid_attach(GTK_GRID(grid), backBut, 5, 0, 1, 1);
-
+  
+  struct log en; 
   en.entry1 = entry1;
   en.entry2 = entry2;
 
@@ -157,16 +234,31 @@ void login(GtkWidget *widget) {
 }
 void submitLogin(GtkWidget *widget, gpointer en) {
 
-
   struct log *d = en;
-  printf("email: %s\n", gtk_entry_get_text (GTK_ENTRY(d->entry1)));
-  printf("Password: %s\n", gtk_entry_get_text (GTK_ENTRY(d->entry2)));
+  char *email= (char*)gtk_entry_get_text (GTK_ENTRY(d->entry1));
+  char *password = (char*)gtk_entry_get_text (GTK_ENTRY(d->entry2));
 
-  gtk_entry_set_text(GTK_ENTRY(d->entry1), "");
-  gtk_entry_set_text(GTK_ENTRY(d->entry2), "");
-  numb = "1";
+  printf("email: %s\n", email);
+  printf("Password: %s\n", password);
+  User *user = authenticate(email, password);
 
-  dashboard();
+
+  if(user != NULL)
+  {
+    printf(ANSI_COLOR_GREEN "User found!\n" ANSI_COLOR_RESET);
+    sleep(1);
+
+    dashboard_menu(user);
+   
+
+  } 
+  else
+  {
+    printf(ANSI_COLOR_RED "Wrong email or password!\n" ANSI_COLOR_RESET);
+    sleep(2);
+    show_info("Invalid credantials");
+    login(widget);
+  }
 }
 void registe(GtkWidget *widget){
   deleteChildren();
@@ -226,15 +318,23 @@ void registe(GtkWidget *widget){
 }
 void submitRegister(GtkWidget *widget, gpointer en) {
   struct regist *d = en;
+  char *name =(char *) gtk_entry_get_text (GTK_ENTRY(d->entry1));
+  char *phone =(char *) gtk_entry_get_text (GTK_ENTRY(d->entry2));
+  char *email =(char *) gtk_entry_get_text (GTK_ENTRY(d->entry3));
+  char *password =(char *) gtk_entry_get_text (GTK_ENTRY(d->entry4));
+  printf("%d\n", (int)strlen(name));
+  if(strcmp(name, "") == 0 || strcmp(email, "") == 0 || strcmp(password, "") == 0 || strcmp(phone, "") == 0){
+      show_info("All inputs are required! ");
+      registe(widget);
+  }
 
-  printf("Name: %s\n", gtk_entry_get_text (GTK_ENTRY(d->entry1)));
-  printf("Phone: %s\n", gtk_entry_get_text (GTK_ENTRY(d->entry2)));
-  printf("email: %s\n", gtk_entry_get_text (GTK_ENTRY(d->entry3)));
-  printf("Password: %s\n", gtk_entry_get_text (GTK_ENTRY(d->entry4)));
-  gtk_entry_set_text(GTK_ENTRY(d->entry1), "");
-  gtk_entry_set_text(GTK_ENTRY(d->entry2), "");
-  gtk_entry_set_text(GTK_ENTRY(d->entry3), "");
-  gtk_entry_set_text(GTK_ENTRY(d->entry4), "");
+  Request_result reg;
+  reg = request_register(name, phone, email, password);
+  if(reg.accepted)
+    printf( ANSI_COLOR_GREEN "%s\n" ANSI_COLOR_RESET, reg.comment);
+  else
+    printf( ANSI_COLOR_RED "%s\n" ANSI_COLOR_RESET, reg.comment);
+    
   login(widget);
 }
 void dashboard(){
@@ -466,4 +566,95 @@ void submitOrder(GtkWidget *widget, gpointer order){
   show_info("Your food order submitted");
   orderFood(widget);
   
+}
+
+
+Request_result request_register(char *name, char *phone, char *email, char *password){
+
+  char query[512];
+  int num_rows;
+  char request_result_string[256];
+  Request_result reg;
+
+  sprintf(query, "INSERT INTO Users (Name, Phone, Email, Password) VALUES ('%s', '%s', '%s', '%s')", name, phone, email, password);
+
+  send(server_socket, query, sizeof(query), 0);
+  recv(server_socket, &num_rows, sizeof(int), 0);
+
+
+  recv(server_socket, request_result_string, sizeof(request_result_string), 0);
+  
+  sscanf(request_result_string, "%d `%[^`]", (int *)&reg.accepted, reg.comment);
+
+  return reg;
+}
+
+void dashboard_menu(User *user){
+  char query[512];
+  int num_rows;
+  char row_string[1024];
+  int new_messages;  
+  int choice; 
+ 
+  sprintf(query, "SELECT COUNT(*) FROM Messages WHERE User_id = %d AND Status = 0", user->ID);
+  send(server_socket, query, sizeof(query), 0);
+  recv(server_socket, &num_rows, sizeof(int), 0);
+
+  recv(server_socket, row_string, sizeof(row_string), 0);
+  sscanf(row_string, " '%d'", &new_messages);
+  sprintf(numb, "%d",new_messages);
+  dashboard();
+}
+User* authenticate(char *email, char *password){//return user struct on success, NULL otherwise
+  User *user = NULL;
+  
+  char query[512];
+  int num_rows;
+  char row_string[1024];
+
+  sprintf(query, "SELECT ID, name, phone, email, password FROM Users WHERE email = '%s' AND password = '%s'", email, password);
+
+  send(server_socket, query, sizeof(query), 0);
+  recv(server_socket, &num_rows, sizeof(int), 0);
+  //printf("Size of int: %d\n", (int)sizeof(int));
+  //sleep(5);
+  if(num_rows>0)
+  {
+    user = malloc(sizeof(User));
+    recv(server_socket, row_string, sizeof(row_string), 0);
+    sscanf(row_string, " '%d' '%[^']' '%[^']' '%[^']' '%[^']'", &user->ID, user->name, user->phone, user->email, user->password);
+  
+  }
+  
+  return user;
+}
+
+int createSocket(){
+
+  int sock = 0;
+  struct sockaddr_in serv_addr;
+  
+  if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+  {
+    printf("\n Socket creation error \n");
+    return -1;
+  }
+
+  memset(&serv_addr, '0', sizeof(serv_addr));
+  serv_addr.sin_family = AF_INET;
+  serv_addr.sin_port = htons(PORT);
+  // Convert IPv4 and IPv6 addresses from text to binary form
+  if(inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr)<=0)
+  {
+    printf("\nInvalid address/ Address not supported \n");
+    return -1;
+  }
+
+  if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+  {
+    printf("\nConnection Failed \n");
+    return -1;
+  }
+
+  return sock;
 }

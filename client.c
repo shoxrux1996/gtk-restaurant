@@ -20,6 +20,7 @@
 #define ANSI_COLOR_RED     "\x1b[31m"
 #define ANSI_COLOR_GREEN   "\x1b[32m"
 #define ANSI_COLOR_RESET   "\x1b[0m"
+#define ANSI_COLOR_BLUE    "\x1b[34m"
 
 typedef struct{
 	int ID;
@@ -36,7 +37,16 @@ typedef struct{
 
 	int hour;
 	int minute;
+
+	char format[20];
+
 } Time;
+
+typedef struct{
+	int ID;
+	int price;
+	char name[255];
+} Meal;
 
 typedef struct{
 	bool accepted;
@@ -118,14 +128,28 @@ void login_menu(){
 }
 
 void dashboard_menu(User *user){
+	
+	char query[512];
+	int num_rows;
+	char row_string[1024];
+	int new_messages;
+
+	
 	int choice; 
 
 	do{
+		sprintf(query, "SELECT COUNT(*) FROM Messages WHERE User_id = %d AND Status = 0", user->ID);
+		send(server_socket, query, sizeof(query), 0);
+		recv(server_socket, &num_rows, sizeof(int), 0);
+
+		recv(server_socket, row_string, sizeof(row_string), 0);
+		sscanf(row_string, " '%d'", &new_messages);
+		
 		printf("\033c");
 		printf("----------Welcome, %s----------\n", user->name);
 		printf("1) Booking a seat\n");
 		printf("2) Order food\n");
-		printf("3) Messages (5)\n");
+		printf("3) Messages (%d)\n", new_messages);
 		printf("-----------------\n");
 		printf("0) Logout\n");
 		printf("Your choice: ");
@@ -183,7 +207,7 @@ void register_menu(){
 
 void booking_menu(User *user){
 	int num_of_people;
-	Time time;
+	Time *time = malloc(sizeof(Time));
 	char comments[1024];
 
 	printf("\033c");
@@ -191,18 +215,23 @@ void booking_menu(User *user){
 	printf("Enter number of people: ");
 	scanf("%d", &num_of_people);
 	printf("Enter time of reservation(dd.mm.yyyy, h:m): ");
-	scanf("%d.%d.%d, %d:%d", &time.day, &time.month, &time.year, &time.hour, &time.minute);
+	scanf("%d.%d.%d, %d:%d", &time->day, &time->month, &time->year, &time->hour, &time->minute);
+	sprintf(time->format, "%04d-%02d-%02d, %02d:%02d:00", time->year, time->month, time->day, time->hour, time->minute);
+
+	//printf("Time: %s\n", time->format);
+	//sleep(50);
+
 	printf("Enter comments for reservation: ");
 	scanf("%s", comments);
 
-	Request_result booking = request_booking(user, num_of_people, time, comments);
-
+	Request_result booking = request_booking(user, num_of_people, *time, comments);
+	free(time);
 	if(booking.accepted)
 		printf( ANSI_COLOR_GREEN "%s\n" ANSI_COLOR_RESET, booking.comment);
 	else
 		printf( ANSI_COLOR_RED "%s\n" ANSI_COLOR_RESET, booking.comment);
 	
-	sleep(1);
+	sleep(3);
 	
 }
 
@@ -213,15 +242,17 @@ User* authenticate(char *email, char *password){//return user struct on success,
 	int num_rows;
 	char row_string[1024];
 
-	sprintf(query, "SELECT name, phone, email, password FROM Users WHERE email = '%s' AND password = '%s'", email, password);
+	sprintf(query, "SELECT ID, name, phone, email, password FROM Users WHERE email = '%s' AND password = '%s'", email, password);
 
 	send(server_socket, query, sizeof(query), 0);
 	recv(server_socket, &num_rows, sizeof(int), 0);
+	//printf("Size of int: %d\n", (int)sizeof(int));
+	//sleep(5);
 	if(num_rows>0)
 	{
 		user = malloc(sizeof(User));
 		recv(server_socket, row_string, sizeof(row_string), 0);
-		sscanf(row_string, " '%[^']' '%[^']' '%[^']' '%[^']'", user->name, user->phone, user->email, user->password);
+		sscanf(row_string, " '%d' '%[^']' '%[^']' '%[^']' '%[^']'", &user->ID, user->name, user->phone, user->email, user->password);
 	
 	}
 	
@@ -231,20 +262,47 @@ User* authenticate(char *email, char *password){//return user struct on success,
 Request_result request_booking(User *user, int num_of_people, Time time, char *comments){// return Booking_req struct object 
 
 	char query[512];
-
-	
+	Time post_time;
+	Time pre_time;
+	int num_rows;
+	char request_result_string[256];
 	Request_result booking;
-	booking.accepted = true;
-	strcpy(booking.comment, "Your request has successfully been booked!");
+
+	sprintf(query, "INSERT INTO Bookings (User_id, Table_id, Time, Status) SELECT %d, ID, '%s', 0 FROM Tables WHERE ID NOT IN (SELECT Table_id FROM Bookings WHERE Time BETWEEN ('%s' - INTERVAL '3' HOUR) AND ('%s' + INTERVAL '3' HOUR)) AND '%s' > NOW() + INTERVAL '20' MINUTE AND No_of_people > %d AND status = true ORDER BY No_of_people LIMIT 1", user->ID, time.format, time.format, time.format, time.format, num_of_people);
+	send(server_socket, query, sizeof(query), 0);
+	recv(server_socket, &num_rows, sizeof(int), 0);
+	
+	recv(server_socket, request_result_string, sizeof(request_result_string), 0);
+	sscanf(request_result_string, "%d `%[^`]", (int *)&booking.accepted, booking.comment);
+
+	if(booking.accepted)
+		strcpy(booking.comment, "Your seat request has successfully been booked!");
+	else
+		strcpy(booking.comment, "Sorry, there are no available seats!");
+
 	return booking;
 }
 
 Request_result request_order(User *user, int meal_id, int num_of_portions, char *address){
-	Request_result ordering;
-	ordering.accepted = true;
-	strcpy(ordering.comment, "Your request for ordering has successfully been arranged!");
 
-	return ordering;
+	char query[512];
+	int num_rows;
+	char request_result_string[256];
+	Request_result order;
+
+	sprintf(query, "INSERT INTO Orders (User_id, Dish_id, Status, Address, No_of_portions) VALUES (%d, %d, 0, '%s', %d)", user->ID, meal_id, address, num_of_portions);
+	send(server_socket, query, sizeof(query), 0);
+	recv(server_socket, &num_rows, sizeof(int), 0);
+
+	recv(server_socket, request_result_string, sizeof(request_result_string), 0);
+	sscanf(request_result_string, "%d `%[^`]", (int *)&order.accepted, order.comment);
+	
+	if(order.accepted)
+		strcpy(order.comment, "Your request for ordering has been arranged for consideration. Please, check your message box for further confirmations.");
+	else
+		strcpy(order.comment, "Sorry, your order request has been cancelled. Please try again!");
+
+	return order;
 }
 Request_result request_register(char *name, char *phone, char *email, char *password){
 
@@ -260,7 +318,7 @@ Request_result request_register(char *name, char *phone, char *email, char *pass
 
 
 	recv(server_socket, request_result_string, sizeof(request_result_string), 0);
-	printf("Request_result: %s\n", request_result_string);
+	
 	sscanf(request_result_string, "%d `%[^`]", (int *)&reg.accepted, reg.comment);
 
 	return reg;
@@ -282,7 +340,7 @@ void ordering_food_menu(User *user){
 
 
 		
-		if(choice > 0 && choice < 4)
+		if(choice > 0 && choice < 5)
 		{
 			int meal_id = choose_meal(user, choice);
 
@@ -313,44 +371,89 @@ void ordering_food_menu(User *user){
 
 int choose_meal(User *user, int category_id){
 
+	char query[512];
+	char row_string[1024];
+	int num_rows;
+
+	sprintf(query, "SELECT ID, Name, Price FROM Dishes WHERE category_id = %d AND Status = 1", category_id);
+	send(server_socket, query, sizeof(query), 0);
+	recv(server_socket, &num_rows, sizeof(int), 0);
+	Meal meals[num_rows];
+
 	int choice;
 
+	for (int i = 0; i < num_rows; ++i)
+	{
+		recv(server_socket, row_string, sizeof(row_string), 0);
+		sscanf(row_string, " '%d' '%[^']' '%d'", &meals[i].ID, meals[i].name, &meals[i].price);
+		//printf("%-15d%-15s%-15d\n", meals[i].ID, meals[i].name, meals[i].price);
+	}
+
+	
 	do{
 		printf("\033c");
-		printf("First meals: \n");
-		printf("1) Palov\n");
-		printf("2) Bifstrogan\n");
-		printf("3) Chicken\n");
+		
+		printf(ANSI_COLOR_BLUE "%-7s %-15s %-10s\n" ANSI_COLOR_RESET, "ID", "Name", "Price");
+	
+		for (int i = 0; i < num_rows; ++i)
+		{	
+			printf("%-7d %-15s %-10d\n", meals[i].ID, meals[i].name, meals[i].price);
+		}
 		printf("--------------------\n");
 		printf("0) Back\n");
-		printf("Your choice: ");
+		printf("Your choice (choose ID): ");
 		scanf("%d", &choice);
 
-		if(choice > 0 && choice < 3)
-		{
-			return choice;
-		}
+		return choice;
+		
 	}while(choice != 0);
 
 	return 0;
 }
 
 void messages_menu(User *user){
+	
+	char query[512];
+	char row_string[1024];
+	char message[512];
+	int status;
+	int num_rows;
 	int choice;
 
-	do{
-		printf("\033c");
-		printf("Messages: \n");
-		printf("* Your booking has successfully been accepted!\n");
-		printf("* Your order has successfully been arranged!\n");
-		printf("* Your order has successfully been arranged!\n");
+	sprintf(query, "SELECT Text, Status FROM Messages WHERE User_id = %d ORDER BY ID DESC", user->ID);
+	send(server_socket, query, sizeof(query), 0);
+	recv(server_socket, &num_rows, sizeof(num_rows), 0);
 
-		printf("------------------\n");
-		printf("0) Back\n");
 
-		printf("Enter 0 to go back: ");
-		scanf("%d", &choice);
-	}while(choice != 0);
+	
+	printf("\033c");
+	printf("Messages: \n");
+	printf("-------------\n");
+	
+	for (int i = 0; i < num_rows; ++i)
+	{
+		recv(server_socket, row_string, sizeof(row_string), 0);
+		sscanf(row_string, " '%[^']' '%d'", message, &status);
+
+		if(status == 0)
+			printf(ANSI_COLOR_GREEN "*) %s\n" ANSI_COLOR_RESET, message);
+		else
+			printf("*) %s\n", message);
+	}
+
+
+	printf("------------------\n");
+	printf("0) Back\n");
+
+	printf("Enter any number to return: ");
+	scanf("%d", &choice);
+	
+
+	sprintf(query, "UPDATE Messages SET Status = 1 WHERE User_id = %d AND Status = 0", user->ID);
+	send(server_socket, query, sizeof(query), 0);
+	recv(server_socket, &num_rows, sizeof(int), 0);
+
+	recv(server_socket, row_string, sizeof(row_string), 0);
 	
 }
 
