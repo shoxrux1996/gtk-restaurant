@@ -44,7 +44,7 @@ void deleteChildren(){
 
   for(iter = children; iter != NULL; iter = g_list_next(iter))
      {
-      gtk_widget_destroy(GTK_WIDGET(iter->data));
+       gtk_container_remove(GTK_CONTAINER(grid), GTK_WIDGET(iter->data));
      
      } 
   
