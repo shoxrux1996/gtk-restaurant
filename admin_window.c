@@ -109,6 +109,21 @@ int main(int argc, char *argv[]) {
   gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
   gtk_container_set_border_width(GTK_CONTAINER(window), 15);
 
+  /*---- CSS ------------------*/
+  GtkCssProvider *provider;
+  GdkDisplay *display;
+  GdkScreen *screen;
+  
+  provider = gtk_css_provider_new ();
+  display = gdk_display_get_default ();
+  screen = gdk_display_get_default_screen (display);
+  gtk_style_context_add_provider_for_screen (screen, GTK_STYLE_PROVIDER (provider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+ 
+  const gchar* style = "style.css";
+  GError *error = 0;
+  gtk_css_provider_load_from_file(provider, g_file_new_for_path(style), &error);
+  g_object_unref (provider);
+  /*---------------------------*/
   grid = gtk_grid_new ();  
   g_object_ref_sink(grid);
 
@@ -775,7 +790,7 @@ void listMenus(GtkWidget *widget){
     GtkWidget *edit = gtk_button_new_with_label("edit");
     gtk_grid_attach(GTK_GRID(grid), edit, 5, j, 1, 1);
 
-    GtkWidget *delete = gtk_button_new_with_label("delete");
+    GtkWidget *delete = gtk_button_new_with_label("delete");  
     gtk_grid_attach(GTK_GRID(grid), delete, 6, j, 1, 1);
 
     g_signal_connect(G_OBJECT(delete),"clicked", G_CALLBACK(deleteMenu), ((gpointer) (glong) (j+1)));
@@ -805,7 +820,7 @@ void editMenu(GtkWidget *widget, gpointer i){
   GtkWidget *entry4;
 
   entry1 = gtk_entry_new();
-  GtkAdjustment *adjustment = gtk_adjustment_new(0,0,10000,1,0, 0);
+  GtkAdjustment *adjustment = gtk_adjustment_new(0,0,10000000,1,0, 0);
   entry2 = gtk_spin_button_new(GTK_ADJUSTMENT(adjustment), 1, 0);
   entry3 = gtk_combo_box_text_new();
   entry4 = gtk_combo_box_text_new();
@@ -868,10 +883,9 @@ void updateMenu(GtkWidget *widget, gpointer menu){
   struct menu *or = menu;
   printf("Name:%s\n", gtk_entry_get_text (GTK_ENTRY(or->entry1)));
   printf("Price:%d\n", gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(or->entry2)));
-   printf("Category:%s\n", gtk_combo_box_text_get_active_text (GTK_COMBO_BOX_TEXT(or->entry3)));
+  printf("Category:%s\n", gtk_combo_box_text_get_active_text (GTK_COMBO_BOX_TEXT(or->entry3)));
   printf("Status:%s\n", gtk_combo_box_text_get_active_text (GTK_COMBO_BOX_TEXT(or->entry4)));
-
-  show_info("Book updated successfully");
+  show_info("Menu updated successfully");
   listMenus(widget);
 }
 void deleteMenu(GtkWidget *widget, gpointer i){

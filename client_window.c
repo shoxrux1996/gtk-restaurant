@@ -464,7 +464,6 @@ void submitOrder(GtkWidget *widget, gpointer order){
   printf("№ portions: %d\n", gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(ord->entry1)));
   printf("id: %d\n", ord->id);
   show_info("Your food order submitted");
-  gtk_entry_set_text(GTK_ENTRY(ord->entry2), "");
   orderFood(widget);
   
 }

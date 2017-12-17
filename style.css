@@ -1,0 +1,22 @@
+button{
+	background: #3498db;
+	box-shadow: 0px 1px 3px #666666;
+	font-family: Courier New;
+	color: #ffffff;
+	padding: 10px 20px 10px 20px;
+	text-decoration: none;
+}
+button:hover {
+  background: #3cb0fd;
+  background-image: linear-gradient(to bottom, #3cb0fd, #3498db);
+  text-decoration: none;
+}
+
+window{
+	background-size: cover;
+  background-repeat: no-repeat;
+   background-image: url("restaurant.jpg");
+}
+label{
+  color: #ffffff;
+}
