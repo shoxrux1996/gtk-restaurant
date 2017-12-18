@@ -12,38 +12,43 @@ GtkWidget *grid; // global fixed container
 
 
 
-struct log
+typedef struct
 {
   GtkWidget *entry1;
   GtkWidget *entry2;
-};
-struct user
-{
-  GtkWidget *entry1;
-  GtkWidget *entry2;
-  GtkWidget *entry3;
-};
-struct order
+} log;
+log lg; 
+typedef struct 
 {
   GtkWidget *entry1;
   GtkWidget *entry2;
   GtkWidget *entry3;
-  GtkWidget *entry4;
-};
-struct book
+} user;
+user us;
+typedef struct 
 {
   GtkWidget *entry1;
   GtkWidget *entry2;
   GtkWidget *entry3;
   GtkWidget *entry4;
-};
-struct menu
+} order;
+order od;
+typedef struct 
 {
   GtkWidget *entry1;
   GtkWidget *entry2;
   GtkWidget *entry3;
   GtkWidget *entry4;
-};
+} book;
+book bk;
+typedef struct 
+{
+  GtkWidget *entry1;
+  GtkWidget *entry2;
+  GtkWidget *entry3;
+  GtkWidget *entry4;
+} menu;
+menu mn;
 
 
 void deleteChildren(){
@@ -71,33 +76,33 @@ void show_info(gchar *inf) {
   gtk_widget_destroy(dialog);
 }
 
-void login(GtkWidget *widget);
-void submitLogin(GtkWidget *widget, gpointer en);
+void login();
+void submitLogin();
 
 void mainWind();
 void dashboard();
 void messages();
 
-void listUsers(GtkWidget *widget);
-void listOrders(GtkWidget *widget);
-void listBooks(GtkWidget *widget);
-void listMenus(GtkWidget *widget);
+void listUsers();
+void listOrders();
+void listBooks();
+void listMenus();
 
 
 void editUser(GtkWidget *widget, gpointer i);
-void updateUser(GtkWidget *widget, gpointer user);
+void updateUser();
 void deleteUser(GtkWidget *widget, gpointer i);
 
 void editOrder(GtkWidget *widget, gpointer i);
-void updateOrder(GtkWidget *widget, gpointer order);
+void updateOrder();
 void deleteOrder(GtkWidget *widget, gpointer i);
 
 void editBook(GtkWidget *widget, gpointer i);
-void updateBook(GtkWidget *widget, gpointer order);
+void updateBook();
 void deleteBook(GtkWidget *widget, gpointer i);
 
 void editMenu(GtkWidget *widget, gpointer i);
-void updateMenu(GtkWidget *widget, gpointer menu);
+void updateMenu();
 void deleteMenu(GtkWidget *widget, gpointer i);
 
 
@@ -148,7 +153,7 @@ void mainWind(){
 
   gtk_widget_show_all(window); 
 }
-void login(GtkWidget *widget) {
+void login() {
   deleteChildren();
 
   GtkWidget *label1;
@@ -161,7 +166,7 @@ void login(GtkWidget *widget) {
   label1 = gtk_label_new("Email");
   label2 = gtk_label_new("Password");
 
-  struct log en; 
+  
 
   entry1 = gtk_entry_new();
   entry2 = gtk_entry_new();
@@ -180,25 +185,24 @@ void login(GtkWidget *widget) {
   gtk_grid_attach(GTK_GRID(grid), loginBut, 1, 2, 1, 1);
   gtk_grid_attach(GTK_GRID(grid), backBut, 5, 0, 1, 1);
 
-  en.entry1 = entry1;
-  en.entry2 = entry2;
+  lg.entry1 = entry1;
+  lg.entry2 = entry2;
 
   g_signal_connect(backBut, "clicked", G_CALLBACK(mainWind), NULL);  
-  g_signal_connect(loginBut, "clicked", G_CALLBACK(submitLogin), &en);
+  g_signal_connect(loginBut, "clicked", G_CALLBACK(submitLogin), NULL);
   g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL); 
 
-  gtk_widget_show_all(window);
-  gtk_main();  
+  gtk_widget_show_all(window);  
 }
-void submitLogin(GtkWidget *widget, gpointer en) {
+void submitLogin() {
 
-  struct log *d = en;
-  printf("email: %s\n", gtk_entry_get_text (GTK_ENTRY(d->entry1)));
-  printf("Password: %s\n", gtk_entry_get_text (GTK_ENTRY(d->entry2)));
+  
+  printf("email: %s\n", gtk_entry_get_text (GTK_ENTRY(lg.entry1)));
+  printf("Password: %s\n", gtk_entry_get_text (GTK_ENTRY(lg.entry2)));
   
 
   char*a = "shoxrux";
-  if(strcmp(gtk_entry_get_text(GTK_ENTRY(d->entry1)),a) == 0){
+  if(strcmp(gtk_entry_get_text(GTK_ENTRY(lg.entry1)),a) == 0){
     dashboard();
   }else{
     
@@ -215,7 +219,7 @@ void dashboard(){
   GtkWidget *button2;
   GtkWidget *button3;
   GtkWidget *button4;
-
+  
 
   GtkWidget *logoutBut;
   
@@ -243,7 +247,7 @@ void dashboard(){
   g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
   gtk_widget_show_all(window);
 }
-void listUsers(GtkWidget *widget){
+void listUsers(){
   deleteChildren();
 
   int size = 5;
@@ -346,36 +350,34 @@ void editUser(GtkWidget *widget, gpointer i){
   gtk_grid_attach(GTK_GRID(grid), backBut, 3, 1, 1, 1);
   gtk_grid_attach(GTK_GRID(grid), update, 2, 4, 1, 1);
 
-  struct user us;
+
   us.entry1 = entry1;
   us.entry2 = entry2;
   us.entry3 = entry3;
 
   gtk_widget_show_all(window);
 
-  g_signal_connect(update, "clicked", G_CALLBACK(updateUser), &us);  
+  g_signal_connect(update, "clicked", G_CALLBACK(updateUser), NULL);  
   g_signal_connect(backBut, "clicked", G_CALLBACK(listUsers), NULL);  
   g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
-  gtk_main();
 }
-void updateUser(GtkWidget *widget, gpointer user){
-  struct user *us = user;
-
-  printf("Name:%s\n", gtk_entry_get_text (GTK_ENTRY(us->entry1)));
-  printf("Phone:%s\n", gtk_entry_get_text (GTK_ENTRY(us->entry2)));
-  printf("Email:%s\n", gtk_entry_get_text (GTK_ENTRY(us->entry3)));
+void updateUser(){
+  
+  printf("Name:%s\n", gtk_entry_get_text (GTK_ENTRY(us.entry1)));
+  printf("Phone:%s\n", gtk_entry_get_text (GTK_ENTRY(us.entry2)));
+  printf("Email:%s\n", gtk_entry_get_text (GTK_ENTRY(us.entry3)));
   show_info("Your food order submitted");
   
-  listUsers(widget);
+  listUsers();
 }
 void deleteUser(GtkWidget *widget, gpointer i){
   show_info("User deleted successfuly");
   deleteChildren();
   int index = ((gint) (glong) (i));
   printf("%d\n", index);
-  listUsers(widget);
+  listUsers();
 }
-void listOrders(GtkWidget *widget){
+void listOrders(){
   deleteChildren();
 
   int size = 5;
@@ -511,38 +513,36 @@ void editOrder(GtkWidget *widget, gpointer i){
   gtk_grid_attach(GTK_GRID(grid), backBut,3, 1, 1, 1);
   gtk_grid_attach(GTK_GRID(grid), update, 2, 5, 1, 1);
 
-  struct order or;
-  or.entry1 = entry1;
-  or.entry2 = entry2;
-  or.entry3 = entry3;
-  or.entry4 = entry4;
+  od.entry1 = entry1;
+  od.entry2 = entry2;
+  od.entry3 = entry3;
+  od.entry4 = entry4;
 
   gtk_widget_show_all(window);
 
-  g_signal_connect(update, "clicked", G_CALLBACK(updateOrder), &or);  
+  g_signal_connect(update, "clicked", G_CALLBACK(updateOrder), NULL);  
   g_signal_connect(backBut, "clicked", G_CALLBACK(listOrders), NULL);  
   g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
-  gtk_main();
-}
-void updateOrder(GtkWidget *widget, gpointer order){
-  struct order *or = order;
 
-  printf("Name:%s\n", gtk_entry_get_text (GTK_ENTRY(or->entry1)));
-  printf("Dish:%s\n", gtk_entry_get_text (GTK_ENTRY(or->entry2)));
-  printf("Selected index:%s\n", gtk_combo_box_text_get_active_text (GTK_COMBO_BOX_TEXT(or->entry3)));
-  printf("Dish:%s\n", gtk_entry_get_text (GTK_ENTRY(or->entry4)));
+}
+void updateOrder(){
+
+  printf("Name:%s\n", gtk_entry_get_text (GTK_ENTRY(od.entry1)));
+  printf("Dish:%s\n", gtk_entry_get_text (GTK_ENTRY(od.entry2)));
+  printf("Selected index:%s\n", gtk_combo_box_text_get_active_text (GTK_COMBO_BOX_TEXT(od.entry3)));
+  printf("Dish:%s\n", gtk_entry_get_text (GTK_ENTRY(od.entry4)));
   show_info("Order updated successfully");
 
-  listOrders(widget);
+  listOrders();
 }
 void deleteOrder(GtkWidget *widget, gpointer i){
   show_info("Order deleted successfuly");
 
   int index = ((gint) (glong) (i));
   printf("%d\n", index);
-  listOrders(widget);
+  listOrders();
 }
-void listBooks(GtkWidget *widget){
+void listBooks(){
   deleteChildren();
 
   int size = 5;
@@ -687,29 +687,27 @@ void editBook(GtkWidget *widget, gpointer i){
   gtk_grid_attach(GTK_GRID(grid), backBut,3, 1, 1, 1);
   gtk_grid_attach(GTK_GRID(grid), update, 2, 5, 1, 1);
 
-  struct book or;
-  or.entry1 = entry1;
-  or.entry2 = entry2;
-  or.entry3 = entry3;
-  or.entry4 = entry4;
+
+  bk.entry1 = entry1;
+  bk.entry2 = entry2;
+  bk.entry3 = entry3;
+  bk.entry4 = entry4;
 
   gtk_widget_show_all(window);
 
-  g_signal_connect(update, "clicked", G_CALLBACK(updateBook), &or);  
+  g_signal_connect(update, "clicked", G_CALLBACK(updateBook), NULL);  
   g_signal_connect(backBut, "clicked", G_CALLBACK(listBooks), NULL);  
   g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
-  gtk_main();
+ 
 }
-void updateBook(GtkWidget *widget, gpointer book){
-  struct book *or = book;
-
-  printf("Name:%s\n", gtk_entry_get_text (GTK_ENTRY(or->entry1)));
-  printf("Table:%s\n", gtk_combo_box_text_get_active_text (GTK_COMBO_BOX_TEXT(or->entry2)));
-  printf("Time:%s\n", gtk_entry_get_text (GTK_ENTRY(or->entry3)));
-  printf("Status:%s\n", gtk_combo_box_text_get_active_text (GTK_COMBO_BOX_TEXT(or->entry4)));
+void updateBook(){
+  printf("Name:%s\n", gtk_entry_get_text (GTK_ENTRY(bk.entry1)));
+  printf("Table:%s\n", gtk_combo_box_text_get_active_text (GTK_COMBO_BOX_TEXT(bk.entry2)));
+  printf("Time:%s\n", gtk_entry_get_text (GTK_ENTRY(bk.entry3)));
+  printf("Status:%s\n", gtk_combo_box_text_get_active_text (GTK_COMBO_BOX_TEXT(bk.entry4)));
 
   show_info("Book updated successfully");
-  listBooks(widget);
+  listBooks();
 }
 void deleteBook(GtkWidget *widget, gpointer i){
   show_info("Book deleted successfuly");
@@ -717,7 +715,7 @@ void deleteBook(GtkWidget *widget, gpointer i){
   printf("%d\n", index);
   listBooks(widget);
 }
-void listMenus(GtkWidget *widget){
+void listMenus(){
   deleteChildren();
 
   int size = 5;
@@ -866,31 +864,31 @@ void editMenu(GtkWidget *widget, gpointer i){
   gtk_grid_attach(GTK_GRID(grid), backBut,3, 1, 1, 1);
   gtk_grid_attach(GTK_GRID(grid), update, 2, 5, 1, 1);
 
-  struct menu or;
-  or.entry1 = entry1;
-  or.entry2 = entry2;
-  or.entry3 = entry3;
-  or.entry4 = entry4;
+ 
+  mn.entry1 = entry1;
+  mn.entry2 = entry2;
+  mn.entry3 = entry3;
+  mn.entry4 = entry4;
 
   gtk_widget_show_all(window);
 
-  g_signal_connect(update, "clicked", G_CALLBACK(updateMenu), &or);  
+  g_signal_connect(update, "clicked", G_CALLBACK(updateMenu), NULL);  
   g_signal_connect(backBut, "clicked", G_CALLBACK(listMenus), NULL);  
   g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
-  gtk_main();
+  
 }
-void updateMenu(GtkWidget *widget, gpointer menu){
-  struct menu *or = menu;
-  printf("Name:%s\n", gtk_entry_get_text (GTK_ENTRY(or->entry1)));
-  printf("Price:%d\n", gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(or->entry2)));
-  printf("Category:%s\n", gtk_combo_box_text_get_active_text (GTK_COMBO_BOX_TEXT(or->entry3)));
-  printf("Status:%s\n", gtk_combo_box_text_get_active_text (GTK_COMBO_BOX_TEXT(or->entry4)));
+void updateMenu(){
+ 
+  printf("Name:%s\n", gtk_entry_get_text (GTK_ENTRY(mn.entry1)));
+  printf("Price:%d\n", gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(mn.entry2)));
+  printf("Category:%s\n", gtk_combo_box_text_get_active_text (GTK_COMBO_BOX_TEXT(mn.entry3)));
+  printf("Status:%s\n", gtk_combo_box_text_get_active_text (GTK_COMBO_BOX_TEXT(mn.entry4)));
   show_info("Menu updated successfully");
-  listMenus(widget);
+  listMenus();
 }
 void deleteMenu(GtkWidget *widget, gpointer i){
   show_info("Menu deleted successfuly");
   int index = ((gint) (glong) (i));
   printf("%d\n", index);
-  listMenus(widget);
+  listMenus();
 }

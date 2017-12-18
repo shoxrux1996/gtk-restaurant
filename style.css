@@ -14,7 +14,7 @@ button:hover {
 
 window{
 	background-size: cover;
-  background-repeat: no-repeat;
+  	background-repeat: no-repeat;
    background-image: url("restaurant.jpg");
 }
 label{
