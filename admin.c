@@ -1,5 +1,5 @@
 //Client side C program to demostrate Socket programming
-#include <stdio.h>
+#include<stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -59,10 +59,16 @@ typedef struct{
 typedef struct{
 	int ID;
 	char name[255];
-	int phone;
+	char phone[32];
 	char email[255];
 	char password[255];
 } User;
+typedef struct{
+	int ID;
+	int userID;
+	char text[255];
+	int status;
+} Message;
 typedef struct{
 	bool accepted;
 	char comment[255];
@@ -86,7 +92,6 @@ void saveUser(User *user);
 void listOrders(); //Listing orders
 void changeOrderStatus(); //Changing order status
 Dish* getDishByID(int ID);
-Order* getOrderByID(int ID);
 // -1 -->Rejected, 0 ---> Not checked, 1 ---->Approved, 2 ----> Delivered
 void changeOrdStatus(Order *order, int status);
 //*************************************/ORDER MANAGEMENT*****************************************************
@@ -94,7 +99,6 @@ void changeOrdStatus(Order *order, int status);
 //**************************************BOOK MANAGEMENT******************************************************
 void listBooks();
 Book *getBookByID(int ID);
-Table* getTableByID(int ID);
 void changeBkStatus(Book *book, int ID);
 //*************************************/BOOK MANAGEMENT******************************************************
 
@@ -111,6 +115,23 @@ void saveWaiter(Employee *employee, int type);
 Employee *getWaiterByID(int ID);
 //***************************************/WAITER MANAGEMENT***************************************************
 
+//*************************************************MESSAGES***************************************************
+void sendMessage();
+void saveMessage(Message *message);
+void listMessage();
+void printMessages(User *user);
+void displayMessageMenu();
+//************************************************/MESSAGES***************************************************
+
+//************************************************TABLES***************************************************
+void listTables();
+void addTable();
+void modifyTable();
+void removeTable();
+Table* getTableByID(int ID);
+void saveTable(Table *table, int type);
+//************************************************/TABLES***************************************************
+
 //****************************************MENUS**************************************************************
 void displayGreetingMenu(); //Display first menu
 void greetingFunction(); //Greeting function
@@ -123,6 +144,7 @@ void displayMenuOrder(); //Display order management
 void displayMenuBook(); //Display book management
 void displayMenuMenu(); //Display menu management
 void displayMenuWaiter(); //Display waiter management
+void displayTableMenu();// Display table menu
 void afterLoggingInMenu(); //After logging in
 //***************************************/MENUS**************************************************************
 
@@ -175,7 +197,7 @@ int createUserRecord(User user){
 	Request_result reg;
 	char request_result_string[256];
 	char *query = malloc(1024);
-	sprintf(query, "INSERT INTO Users(name, phone, email, password) VALUES ('%s', %d, '%s', '%s')", user.name, user.phone, user.email, user.password);
+	sprintf(query, "INSERT INTO Users(name, phone, email, password) VALUES ('%s', '%s', '%s', '%s')", user.name, user.phone, user.email, user.password);
 	send(server_socket, query, strlen(query), 0);
 	int numOfRows;
 	recv(server_socket, &numOfRows, sizeof(int), 0);
@@ -213,6 +235,7 @@ int login(){
 	clrscr();
 	Employee *manager = checkForUserExistense(email, password);
 	if(manager != NULL){
+		free(manager);
 		return 1;
 	}else{
 		printf("%s\n", "Incorrect username or password");
@@ -231,7 +254,7 @@ void reg(){
 	printf("%s", "Enter your email: ");
 	scanf("%s", user.email);
 	printf("%s", "Enter your phone number: ");
-	scanf("%d", &user.phone);
+	scanf("%s", user.phone);
 	clrscr();
 	if(createUserRecord(user) == 1){
 		printf("%s\n", "User Successfully created");
@@ -251,11 +274,11 @@ void listUsers(){
 		User users[numOfRows];
 		for(int i = 0; i < numOfRows; i++){
 			recv(server_socket, result, sizeof(result), 0);
-			sscanf(result, " '%d' '%[^']' '%d' '%[^']' '%[^']'", &(users[i].ID), users[i].name, &(users[i].phone), users[i].email, users[i].password);
+			sscanf(result, " '%d' '%[^']' '%[^']' '%[^']' '%[^']'", &(users[i].ID), users[i].name, users[i].phone, users[i].email, users[i].password);
 		}
 		printf("ID\tName\tPhone\tEmail\tPassword\n");
 		for(int i = 0; i < numOfRows; i++)
-			printf("%d\t%s\t%d\t%s\t%s\n", users[i].ID, users[i].name, users[i].phone, users[i].email, users[i].password);
+			printf("%d\t%s\t%s\t%s\t%s\n", users[i].ID, users[i].name, users[i].phone, users[i].email, users[i].password);
 		printf("\n");
 	}else{
 		printf("No users found\n");
@@ -274,7 +297,7 @@ void modifyUser(){
 			printf("%s\n", "Modifying user...");
 			printf("ID: %d\n", user->ID);
 			printf("Name: %s\n", user->name);
-			printf("Phone: %d\n", user->phone);
+			printf("Phone: %s\n", user->phone);
 			printf("Email: %s\n", user->email);
 			printf("What do you want to change?\n");
 			printf("1. Name\n");
@@ -292,7 +315,7 @@ void modifyUser(){
 			    	break;
 			    case 2:
 			    	printf("Enter new phone: ");  	
-			    	scanf("%d", &(user->phone));
+			    	scanf("%s", user->phone);
 			    	break;
 			    case 3:
 			    	printf("Enter new email: ");
@@ -326,23 +349,23 @@ void removeUser(){
 			printf("%s\n", "Deleting user...");
 			printf("ID: %d\n", user->ID);
 			printf("Name: %s\n", user->name);
-			printf("Phone: %d\n", user->phone);
+			printf("Phone: %s\n", user->phone);
 			printf("Email: %s\n", user->email);
 			printf("Are you really want to delete user? (y/n)");
 			char decision;
 			scanf(" %s", &decision);
 			if(decision == 'y'){
-				char query[1024];
+				char query[512];
 				sprintf(query, "DELETE FROM Users WHERE ID = %d", user->ID);
 
 				send(server_socket, query, sizeof(query), 0);
 				recv(server_socket, &numOfRows, sizeof(int), 0);
 				recv(server_socket, request_result_string, sizeof(request_result_string), 0);
 				sscanf(request_result_string, "%d `%[^`]", (int *)&reg.accepted, reg.comment);
-				if(numOfRows == 1){
+				if(reg.accepted){
 					printf("User Successfully deleted\n");
 				}else{
-					printf("Error occured during deletion\n");
+					printf("%s", reg.comment);
 				}
 				break;
 			}else{
@@ -350,24 +373,23 @@ void removeUser(){
 				break;
 			}
 		}
+		free(user);
 		displayMenuUser();
 	}
 }
 
 User* getUserByID(int ID){
-	User *user =NULL;
 	char query[512];
 	char result[1024];
-	 user= malloc(sizeof(User));
+	User *user = NULL;
 	sprintf(query, "SELECT * FROM Users WHERE ID = %d", ID);
 	int count;
 	send(server_socket, query, sizeof(query), 0);
 	recv(server_socket, &count, sizeof(int), 0);
 	if(count == 1){
+		user = malloc(sizeof(User));
 		recv(server_socket, result, sizeof(result), 0);
-		sscanf(result, " '%d' '%[^']' '%d' '%[^']' '%[^']'", &(user->ID), user->name, &(user->phone), user->email, user->password);
-	}else{
-		user = NULL;
+		sscanf(result, " '%d' '%[^']' '%[^']' '%[^']' '%[^']'", &(user->ID), user->name, user->phone, user->email, user->password);
 	}
 	return user;
 }
@@ -377,13 +399,15 @@ void saveUser(User *user){
 	char request_result_string[256];
 	char query[512];
 	int numOfRows;
-	sprintf(query, "UPDATE Users SET Name = '%s', Phone = %d, Email = '%s' WHERE ID = %d", user->name, user->phone, user->email, user->ID);
+	sprintf(query, "UPDATE Users SET Name = '%s', Phone = '%s', Email = '%s' WHERE ID = %d", user->name, user->phone, user->email, user->ID);
 	send(server_socket, query, sizeof(query), 0);
 	recv(server_socket, &numOfRows, sizeof(int), 0);
-	if(numOfRows == 1)
-		printf("Successfully saved\n");
 	recv(server_socket, request_result_string, sizeof(request_result_string), 0);
 	sscanf(request_result_string, "%d `%[^`]", (int *)&reg.accepted, reg.comment);
+	if(reg.accepted)
+		printf("Successfully saved\n");
+	else
+		printf("%s\n", reg.comment);
 }
 //*************************************/USER MANAGEMENT******************************************************
 
@@ -405,11 +429,7 @@ void listOrders(){
 		for(int i = 0; i < numOfRows; i++){
 			int ID = orders[i].ID;
 			User *user = getUserByID(orders[i].userID);
-			char userName[255];
-			strcpy(userName, user->name);
 			Dish *dish = getDishByID(orders[i].dishID);
-			char dishName[255];
-			strcpy(dishName, dish->name);
 			char status[32];
 			if(orders[i].status == 0)
 				strcpy(status, "Not checked");
@@ -419,7 +439,11 @@ void listOrders(){
 				strcpy(status, "Approved");
 			if(orders[i].status == 2)
 				strcpy(status, "Delivered");
-			printf("%d\t%s\t%s\t%s\t%s\t%d\n", orders[i].ID, userName, dishName, status, orders[i].address, orders[i].noOfPportions);
+			printf("%d\t%s\t%s\t%s\t%s\t%d\n", orders[i].ID, user->name, dish->name, status, orders[i].address, orders[i].noOfPportions);
+			if(user != NULL)
+				free(user);
+			if(dish != NULL)
+				free(dish);
 		}
 		printf("\n");
 	}else{
@@ -430,16 +454,15 @@ void listOrders(){
 Dish *getDishByID(int ID){
 	char query[512];
 	char result[1024];
-	Dish *dish = malloc(sizeof(dish));
+	Dish *dish = NULL;
 	sprintf(query, "SELECT * FROM Dishes WHERE ID = %d", ID);
 	int count;
 	send(server_socket, query, sizeof(query), 0);
 	recv(server_socket, &count, sizeof(int), 0);
 	if(count == 1){
+		dish = malloc(sizeof(Dish));
 		recv(server_socket, result, sizeof(result), 0);
 		sscanf(result, " '%d' '%[^']' '%d' '%d' '%d'", &(dish->ID), dish->name, &(dish->price), &(dish->categoryID), &(dish->status));
-	}else{
-		dish = NULL;
 	}
 	return dish;
 }
@@ -447,16 +470,15 @@ Dish *getDishByID(int ID){
 Order* getOrderByID(int ID){
 	char query[512];
 	char result[1024];
-	Order *order = malloc(sizeof(order));
+	Order *order = NULL;
 	sprintf(query, "SELECT * FROM Orders WHERE ID = %d", ID);
 	int count;
 	send(server_socket, query, sizeof(query), 0);
 	recv(server_socket, &count, sizeof(int), 0);
 	if(count == 1){
+		order = malloc(sizeof(Order));
 		recv(server_socket, result, sizeof(result), 0);
 		sscanf(result, " '%d' '%d' '%d' '%d' '%[^']' '%d'", &(order->ID), &(order->userID), &(order->dishID), &(order->status), order->address, &(order->noOfPportions));
-	}else{
-		order = NULL;
 	}
 	return order;
 }
@@ -518,13 +540,14 @@ void changeOrdStatus(Order *order, int status){
 	sprintf(query, "UPDATE Orders SET Status = %d WHERE ID = %d", status, order->ID);
 	send(server_socket, query, sizeof(query), 0);
 	recv(server_socket, &numOfRows, sizeof(int), 0);
-	if(numOfRows == 1)
-		printf("Status Successfully changed\n");
-	else{
-		printf("Status Unsuccessfully changed\n");
-	}
 	recv(server_socket, request_result_string, sizeof(request_result_string), 0);
 	sscanf(request_result_string, "%d `%[^`]", (int *)&reg.accepted, reg.comment);
+	if(reg.accepted)
+		printf("Status Successfully changed\n");
+	else{
+		printf("%s\n", reg.comment);
+	}
+	free(order);
 	displayMenuOrder();
 }
 
@@ -544,12 +567,11 @@ void removeOrder(){
 			printf("ID: %d\n", order->ID);
 			char name[255];
 			User *user = getUserByID(order->userID);
-			strcpy(name, user->name);
-			printf("User: %s\n", name);
-			char dishName[255];
+			printf("User: %s\n", user->name);
+			free(user);
 			Dish *dish = getDishByID(order->dishID);
-			strcpy(dishName, dish->name);
-			printf("Dish: %s\n", dishName);
+			printf("Dish: %s\n", dish->name);
+			free(dish);
 			char status[32];
 			if(order->status == 0)
 				strcpy(status, "Not checked");
@@ -572,10 +594,10 @@ void removeOrder(){
 				recv(server_socket, &numOfRows, sizeof(int), 0);
 				recv(server_socket, request_result_string, sizeof(request_result_string), 0);
 				sscanf(request_result_string, "%d `%[^`]", (int *)&reg.accepted, reg.comment);
-				if(numOfRows == 1){
+				if(reg.accepted){
 					printf("Order Successfully deleted\n");
 				}else{
-					printf("Error occured during deletion\n");
+					printf("%s\n", reg.comment);
 				}
 				break;
 			}else{
@@ -583,6 +605,7 @@ void removeOrder(){
 				break;
 			}
 		}
+		free(order);
 		displayMenuOrder();
 	}
 }
@@ -604,12 +627,8 @@ void listBooks(){
 		}
 		printf("ID\tUser\t# of people\tDate\tStatus\n");
 		for(int i = 0; i < numOfRows; i++){
-			int ID = books[i].ID;
 			User *user = getUserByID(books[i].userID);
-			char userName[255];
-			strcpy(userName, user->name);
 			Table *table = getTableByID(books[i].tableID);
-			int noOfPeople = table->noOfPeople;
 			char status[32];
 			if(books[i].status == 0)
 				strcpy(status, "Not checked");
@@ -619,7 +638,9 @@ void listBooks(){
 				strcpy(status, "Approved");
 			if(books[i].status == 2)
 				strcpy(status, "Served");
-			printf("%d\t%s\t%d\t%s\t%s\n", books[i].ID, userName, noOfPeople, books[i].date, status);
+			printf("%d\t%s\t%d\t%s\t%s\n", books[i].ID, user->name, table->noOfPeople, books[i].date, status);
+			free(user);
+			free(table);
 		}
 		printf("\n");
 	}else{
@@ -630,16 +651,15 @@ void listBooks(){
 Book *getBookByID(int ID){
 	char query[512];
 	char result[1024];
-	Book *book = malloc(sizeof(book));
+	Book *book = NULL;
 	sprintf(query, "SELECT * FROM Bookings WHERE ID = %d", ID);
 	int count;
 	send(server_socket, query, sizeof(query), 0);
 	recv(server_socket, &count, sizeof(int), 0);
 	if(count == 1){
+		book = malloc(sizeof(Book));
 		recv(server_socket, result, sizeof(result), 0);
 		sscanf(result, " '%d' '%d' '%d' '%[^']' '%d'", &(book->ID), &(book->userID), &(book->tableID), book->date, &(book->status));
-	}else{
-		book = NULL;
 	}
 	return book;
 }
@@ -647,16 +667,15 @@ Book *getBookByID(int ID){
 Table *getTableByID(int ID){
 	char query[512];
 	char result[1024];
-	Table *table = malloc(sizeof(table));
+	Table *table = NULL;
 	sprintf(query, "SELECT * FROM Tables WHERE ID = %d", ID);
 	int count;
 	send(server_socket, query, sizeof(query), 0);
 	recv(server_socket, &count, sizeof(int), 0);
 	if(count == 1){
+		table = malloc(sizeof(Table));
 		recv(server_socket, result, sizeof(result), 0);
 		sscanf(result, " '%d' '%d' '%d'", &(table->ID), &(table->noOfPeople), &(table->status));
-	}else{
-		table = NULL;
 	}
 	return table;
 }
@@ -705,6 +724,7 @@ void changeBookStatus(){
 			    	break;
 			}
 		}
+		free(book);
 	}else{
 		printf("Incorrect book ID");
 	}
@@ -744,12 +764,13 @@ void removeBook(){
 			printf("%s\n", "Deleting book...");
 			printf("ID: %d\n", book->ID);
 			User *user = getUserByID(book->userID);
-			char userName[255];
-			strcpy(userName, user->name);
-			printf("User: %s\n", userName);
+			printf("User: %s\n", user->name);
 			Table *table = getTableByID(book->tableID);
-			int noOfPeople = table->noOfPeople;
-			printf("# of people: %d\n", noOfPeople);
+			printf("# of people: %d\n", table->noOfPeople);
+			if(user != NULL)
+				free(user);
+			if(table != NULL)
+				free(table);
 			printf("Date: %s\n", book->date);
 			char status[32];
 			if(book->status == 0)
@@ -782,6 +803,7 @@ void removeBook(){
 				break;
 			}
 		}
+		free(book);
 		displayMenuBook();
 	}
 }
@@ -810,6 +832,7 @@ void listMenu(){
 			if(dishes[i].status == 1)
 				strcpy(status, "Available");
 			printf("%d\t%s\t%d\t%s\t%s\n", dishes[i].ID, dishes[i].name, dishes[i].price, category->name, status);
+			free(category);
 		}
 		printf("\n");
 	}else{
@@ -820,23 +843,22 @@ void listMenu(){
 Category *getCategoryByID(int ID){
 	char query[512];
 	char result[1024];
-	Category *category = malloc(sizeof(category));
+	Category *category = NULL;
 	sprintf(query, "SELECT * FROM Categories WHERE ID = %d", ID);
 	int count;
 	send(server_socket, query, sizeof(query), 0);
 	recv(server_socket, &count, sizeof(int), 0);
 	if(count == 1){
+		category = malloc(sizeof(Category));
 		recv(server_socket, result, sizeof(result), 0);
 		sscanf(result, " '%d' '%[^']'", &(category->ID), category->name);
-	}else{
-		category = NULL;
 	}
 	return category;
 }
 
 void addDish(){
 	clrscr();
-	Dish *dish = malloc(sizeof(dish));
+	Dish *dish = malloc(sizeof(Dish));
 	printf("Adding new dish\n");
 	printf("Enter dish name: ");
 	scanf("%s", dish->name);
@@ -858,7 +880,7 @@ void addDish(){
 void saveDish(Dish *dish, int type){
 	Request_result reg;
 	char request_result_string[256];
-	char *query = malloc(1024);
+	char query[512];
 	if(type == 0){
 		sprintf(query, "INSERT INTO Dishes(Name, Price, Category_id, Status) VALUES ('%s', %d, %d, %d)", dish->name, dish->price, dish->categoryID, dish->status);
 	}else{
@@ -869,9 +891,8 @@ void saveDish(Dish *dish, int type){
 	recv(server_socket, &numOfRows, sizeof(int), 0);
 	recv(server_socket, request_result_string, sizeof(request_result_string), 0);
 	sscanf(request_result_string, "%d `%[^`]", (int *)&reg.accepted, reg.comment);
-	free(query);
 	free(dish);
-	if(numOfRows == 1){
+	if(reg.accepted){
 		printf("Dish saved Successfully\n");
 	}else{
 		printf("Error occured during the saving of dish\n");
@@ -897,6 +918,7 @@ void modifyDish(){
 			printf("Price: %d\n", dish->price);
 			Category *category = getCategoryByID(dish->categoryID);
 			printf("Category: %s\n", category->name);
+			free(category);
 			char status[32];
 			if(dish->status == 0)
 				strcpy(status, "Not available");
@@ -946,6 +968,7 @@ void modifyDish(){
 			  	 	attemptAgain();
 			}
 		}
+		free(dish);
 	}else{
 		printf("Incorrect user ID");
 	}
@@ -970,6 +993,7 @@ void removeDish(){
 			printf("Price: %d\n", dish->price);
 			Category *category = getCategoryByID(dish->categoryID);
 			printf("Category: %s\n", category->name);
+			free(category);
 			char status[32];
 			if(dish->status == 0)
 				strcpy(status, "Not available");
@@ -986,10 +1010,10 @@ void removeDish(){
 				recv(server_socket, &numOfRows, sizeof(int), 0);
 				recv(server_socket, request_result_string, sizeof(request_result_string), 0);
 				sscanf(request_result_string, "%d `%[^`]", (int *)&reg.accepted, reg.comment);
-				if(numOfRows == 1){
+				if(reg.accepted){
 					printf("Dish Successfully deleted\n");
 				}else{
-					printf("Error occured during deletion\n");
+					printf("%s\n", reg.comment);
 				}
 				break;
 			}else{
@@ -997,6 +1021,7 @@ void removeDish(){
 				break;
 			}
 		}
+		free(dish);
 		displayMenuMenu();
 	}
 }
@@ -1027,7 +1052,7 @@ void listWaiters(){
 
 void addWaiter(){
 	clrscr();
-	Employee *waiter = malloc(sizeof(waiter));
+	Employee *waiter = malloc(sizeof(Employee));
 	printf("%s\n", "Registering waiter");
 	printf("%s", "Enter waiter name: ");
 	scanf("%s", waiter->name);
@@ -1051,13 +1076,14 @@ void saveWaiter(Employee *employee, int type){
 		sprintf(query, "UPDATE Employees SET Name = '%s', Login = '%s', password = '%s', Role = %d WHERE ID = %d", employee->name, employee->login, employee->password, employee->role, employee->ID);
 	send(server_socket, query, sizeof(query), 0);
 	recv(server_socket, &numOfRows, sizeof(int), 0);
-	if(numOfRows == 1)
-		printf("Waiter successfully saved\n");
-	else{
-		printf("Error occured during saving\n");
-	}
 	recv(server_socket, request_result_string, sizeof(request_result_string), 0);
 	sscanf(request_result_string, "%d `%[^`]", (int *)&reg.accepted, reg.comment);
+	if(reg.accepted)
+		printf("Waiter successfully saved\n");
+	else{
+		printf("%s\n", reg.comment);
+	}
+	free(employee);
 	sleep(3);
 	clrscr();
 	displayMenuWaiter();
@@ -1114,6 +1140,8 @@ void modifyWaiter(){
 			    	break;
 			}
 		}
+		if(waiter != NULL)
+			free(waiter);
 	}else{
 		printf("Incorrect waiter ID");
 	}
@@ -1122,16 +1150,15 @@ void modifyWaiter(){
 Employee *getWaiterByID(int ID){
 	char query[512];
 	char result[1024];
-	Employee *waiter = malloc(sizeof(waiter));
+	Employee *waiter = NULL;
 	sprintf(query, "SELECT * FROM Employees WHERE ID = %d AND Role = 1", ID);
 	int count;
 	send(server_socket, query, sizeof(query), 0);
 	recv(server_socket, &count, sizeof(int), 0);
 	if(count == 1){
+		waiter = malloc(sizeof(Employee));
 		recv(server_socket, result, sizeof(result), 0);
 		sscanf(result, " '%d' '%[^']' '%[^']' '%[^']' '%d'", &(waiter->ID), waiter->name, waiter->login, waiter->password, &(waiter->role));
-	}else{
-		waiter = NULL;
 	}
 	return waiter;
 }
@@ -1157,16 +1184,16 @@ void removeWaiter(){
 			char decision;
 			scanf(" %s", &decision);
 			if(decision == 'y'){
-				char query[1024];
+				char query[512];
 				sprintf(query, "DELETE FROM Employees WHERE ID = %d", waiter->ID);
 				send(server_socket, query, sizeof(query), 0);
 				recv(server_socket, &numOfRows, sizeof(int), 0);
 				recv(server_socket, request_result_string, sizeof(request_result_string), 0);
 				sscanf(request_result_string, "%d `%[^`]", (int *)&reg.accepted, reg.comment);
-				if(numOfRows == 1){
+				if(reg.accepted){
 					printf("Waiter Successfully deleted\n");
 				}else{
-					printf("Error occured during deletion\n");
+					printf("%s\n", reg.comment);
 				}
 				break;
 			}else{
@@ -1174,12 +1201,267 @@ void removeWaiter(){
 				break;
 			}
 		}
+		free(waiter);
 		displayMenuWaiter();
 	}
 }
 
 
 //***************************************/WAITER MANAGEMENT***************************************************
+
+//*************************************************MESSAGES***************************************************
+void sendMessage(){
+	printf("Sending message....\n");
+	listUsers();
+	printf("Please enter user's ID: ");
+	int ID;
+	scanf("%d", &ID);
+	User *user = getUserByID(ID);
+	if(user != NULL){
+		Message *message = malloc(sizeof(Message));
+		message->userID = ID;
+		clrscr();
+		printf("Sending message to: %s\n", user->name);
+		printf("Enter the message text below please: ");
+		scanf(" %[^\n]s", message->text);
+		free(user);
+		saveMessage(message);
+	}else{
+		printf("Incorrect user ID entered\n");
+	}
+}
+
+void saveMessage(Message *message){
+	Request_result reg;
+	char request_result_string[256];
+	char query[512];
+	int numOfRows;
+	sprintf(query, "INSERT INTO Messages(User_id, Text) VALUES (%d, '%s')", message->userID, message->text);
+	send(server_socket, query, sizeof(query), 0);
+	recv(server_socket, &numOfRows, sizeof(int), 0);
+	recv(server_socket, request_result_string, sizeof(request_result_string), 0);
+	scanf(request_result_string, "%d `%[^`]", (int *)&reg.accepted, reg.comment);
+	if(reg.accepted){
+		printf("Message successfully send\n");
+	}else{
+		printf("%s\n", reg.comment);
+	}
+	free(message);
+	sleep(3);
+}
+
+void listMessage(){
+	printf("Printing messages ...\n");
+	listUsers();
+	printf("Please enter user's ID: ");
+	int ID;
+	scanf("%d", &ID);
+	User *user = getUserByID(ID);
+	if(user != NULL){
+		clrscr();
+		printf("Message history of the user --> %s\n", user->name);
+		printMessages(user);
+	}else{
+		printf("Incorrect user's ID\n");
+	}
+}
+
+void printMessages(User *user){
+	char query[512];
+	sprintf(query, "SELECT * FROM Messages WHERE ID = %d", user->ID);
+	char result[1024];
+	send(server_socket, query, sizeof(query), 0);
+	int numOfRows;
+	recv(server_socket, &numOfRows, sizeof(int), 0);
+	if(numOfRows > 0){
+		Message messages[numOfRows];
+		for(int i = 0; i < numOfRows; i++){
+			recv(server_socket, result, sizeof(result), 0);
+			sscanf(result, " '%d' '%d' '%[^']' '%d'", &(messages[i].ID), &(messages[i].userID), messages[i].text, &(messages[i].status));
+		}
+		printf("Text\tStatus\n");
+		for(int i = 0; i < numOfRows; i++){
+			char status[32];
+			if(messages[i].status == 0)
+				strcpy(status, "Not read");
+			else
+				strcpy(status, "Read");
+			printf("%s\t%s\n", messages[i].text, status);
+		}
+		printf("\n");
+	}else{
+		printf("No messages found\n");
+	}
+	free(user);
+}
+//************************************************/MESSAGES***************************************************
+
+//************************************************TABLE MANAGEMENT********************************************
+void listTables(){
+	clrscr();
+	char query[512] = "SELECT * FROM Tables";
+	char result[1024];
+	send(server_socket, query, sizeof(query), 0);
+	int numOfRows;
+	recv(server_socket, &numOfRows, sizeof(int), 0);
+	if(numOfRows > 0){
+		Table tables[numOfRows];
+		for(int i = 0; i < numOfRows; i++){
+			recv(server_socket, result, sizeof(result), 0);
+			sscanf(result, " '%d' '%d' '%d'", &(tables[i].ID), &(tables[i].noOfPeople), &(tables[i].status));
+		}
+		printf("ID\t# of People\tStatus\n");
+		for(int i = 0; i < numOfRows; i++){
+			char status[32];
+			if(tables[i].status == 0)
+				strcpy(status, "Not available");
+			else
+				strcpy(status, "Available");
+			printf("%d\t%d\t%s\n", tables[i].ID, tables[i].noOfPeople, status);
+		}
+		printf("\n");
+	}else{
+		printf("No tables found\n");
+	}
+}
+
+void addTable(){
+	clrscr();
+	Table *table = malloc(sizeof(Table));
+	printf("%s\n", "Registering new table");
+	printf("%s", "Enter size of the table (# of people): ");
+	scanf("%d", &(table->noOfPeople));
+	printf("%s", "Enter status of the table: \n");
+	printf("%s\n", "0. Not available");
+	printf("%s\n", "1. Available");
+	scanf("%d", &(table->status));
+	clrscr();
+	saveTable(table, 0);
+}
+
+void saveTable(Table *table, int type){
+	Request_result reg;
+	char request_result_string[256];
+	char query[512];
+	int numOfRows;
+	if(type == 0)
+		sprintf(query, "INSERT INTO Tables(No_of_people, Status) VALUES (%d, %d)", table->noOfPeople, table->status);
+	else
+		sprintf(query, "UPDATE Tables SET No_of_people = %d, Status = %d WHERE ID = %d", table->noOfPeople, table->status, table->ID);
+	send(server_socket, query, sizeof(query), 0);
+	recv(server_socket, &numOfRows, sizeof(int), 0);
+	recv(server_socket, request_result_string, sizeof(request_result_string), 0);
+	sscanf(request_result_string, "%d `%[^`]", (int *)&reg.accepted, reg.comment);
+	if(reg.accepted)
+		printf("Table successfully saved\n");
+	else{
+		printf("%s\n", reg.comment);
+	}
+	free(table);
+	sleep(3);
+	clrscr();
+	displayTableMenu();
+}
+
+void modifyTable(){
+	clrscr();
+	listTables();
+	int ID;
+	printf("Please enter table's ID: ");
+	scanf("%d", &ID);
+	Table *table = getTableByID(ID);
+	if(table != NULL){
+		while(1){
+			printf("%s\n", "Modifying table...");
+			printf("ID: %d\n", table->ID);
+			printf("# of people: %d\n", table->noOfPeople);
+			char status[32];
+			if(table->status == 0)
+				strcpy(status, "Not available");
+			else
+				strcpy(status, "Available");
+			printf("Status: %s\n", status);
+			printf("What do you want to change?\n");
+			printf("1. # of people\n");
+			printf("2. Status\n");
+			printf("3. Save\n");
+			printf("4. Back to page\n");
+			int choice;
+			printf("Enter your choice: ");
+			scanf("%d", &choice);
+			switch(choice){
+				case 1:
+			    	printf("Enter new number of people: ");
+			    	scanf("%d", &(table->noOfPeople));
+			    	break;
+			    case 2:
+			    	printf("Choose a status\n");
+			    	printf("%s\n", "0. Not available");
+			    	printf("%s\n", "1. Available");  	
+			    	scanf("%d", &(table->status));
+			    	break;
+			    case 3:
+			    	saveTable(table, 1);
+			    	break;
+			    case 4:
+			    	displayTableMenu();
+			    	break;
+			}
+		}
+		if(table != NULL)
+			free(table);
+	}else{
+		printf("Incorrect table ID");
+	}
+}
+
+void removeTable(){
+	clrscr();
+	listTables();
+	int ID;
+	int numOfRows;
+	Request_result reg;
+	char request_result_string[256];
+	printf("Enter table's ID: ");
+	scanf("%d", &ID);
+	Table *table = getTableByID(ID);
+	if(table != NULL){
+		while(1){
+			printf("%s\n", "Deleting table...");
+			printf("ID: %d\n", table->ID);
+			printf("# of people: %d\n", table->noOfPeople);
+			char status[32];
+			if(table->status == 0)
+				strcpy(status, "Not available");
+			else
+				strcpy(status, "Available");
+			printf("Status: %s\n", status);
+			printf("Are you really want to delete table? (y/n)");
+			char decision;
+			scanf(" %s", &decision);
+			if(decision == 'y'){
+				char query[512];
+				sprintf(query, "DELETE FROM Tables WHERE ID = %d", table->ID);
+				send(server_socket, query, sizeof(query), 0);
+				recv(server_socket, &numOfRows, sizeof(int), 0);
+				recv(server_socket, request_result_string, sizeof(request_result_string), 0);
+				sscanf(request_result_string, "%d `%[^`]", (int *)&reg.accepted, reg.comment);
+				if(reg.accepted){
+					printf("Table Successfully deleted\n");
+				}else{
+					printf("%s\n", reg.comment);
+				}
+				break;
+			}else{
+				printf("The operation has cancelled\n");
+				break;
+			}
+		}
+		free(table);
+		displayTableMenu();
+	}
+}
+//***********************************************/TABLE MANAGEMENT********************************************
 
 //****************************************MENUS**************************************************************
 void greetingFunction(){
@@ -1225,7 +1507,9 @@ void afterLoggingInMenu(){
 		printf("%s\n", "3.Managing books");
 		printf("%s\n", "4.Managing menu");
 		printf("%s\n", "5.Managing waiters");
-		printf("%s\n", "6.Back to page");
+		printf("%s\n", "6.Message management");
+		printf("%s\n", "7.Table management");
+		printf("%s\n", "8.Back to page");
 			int choice;
 			scanf("%d", &choice);
 			clrscr();
@@ -1246,6 +1530,12 @@ void afterLoggingInMenu(){
 					displayMenuWaiter();
 					break;
 				case 6:
+					displayMessageMenu();
+					break;
+				case 7:
+					displayTableMenu();
+					break;
+				case 8:
 					greetingFunction();
 					break;
 				default:
@@ -1405,6 +1695,61 @@ void displayMenuWaiter(){
 	}
 }
 
+void displayMessageMenu(){
+	while(1){
+		printf("%s\n", "Managing messages");
+		printf("%s\n", "1.Send message");
+		printf("%s\n", "2.List message");
+		printf("%s\n", "3.Back to page");
+		int choice;
+		scanf("%d", &choice);
+		switch(choice){
+			case 1:
+				sendMessage();
+				break;
+			case 2:
+				listMessage();
+				break;
+			case 3:
+				afterLoggingInMenu();
+			default:
+				attemptAgain();
+		}
+	}
+}
+
+void displayTableMenu(){
+	while(1){
+		printf("%s\n", "Managing tables");
+		printf("%s\n", "1.List tables");
+		printf("%s\n", "2.Add table");
+		printf("%s\n", "3.Modify table");
+		printf("%s\n", "4.Remove table");
+		printf("%s\n", "5.Back to page");
+		int choice;
+		scanf("%d", &choice);
+		switch(choice){
+			case 1:
+				listTables();
+				break;
+			case 2:
+				addTable();
+				break;
+			case 3:
+				modifyTable();
+				break;
+			case 4:
+				removeTable();
+				break;
+			case 5:
+				afterLoggingInMenu();
+				break;
+			default:
+				attemptAgain();
+		}
+	}
+}
+
 void exitApp(){
 	printf("%s\n", "Thank you for using our application!!!");
 	exit(1);
@@ -1414,6 +1759,8 @@ void attemptAgain(){
 	printf("%s\n", "Please choose the option listed above!!!");
 }
 //***************************************/MENUS**************************************************************
+
+
 
 //***************************************ADDITIONAL FUNCTIONS ***********************************************
 void clrscr(){

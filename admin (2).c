@@ -1230,7 +1230,7 @@ void saveMessage(Message *message){
 	send(server_socket, query, sizeof(query), 0);
 	recv(server_socket, &numOfRows, sizeof(int), 0);
 	recv(server_socket, request_result_string, sizeof(request_result_string), 0);
-	scanf(request_result_string, "%d `%[^`]", (int *)&reg.accepted, reg.comment);
+	sscanf(request_result_string, "%d `%[^`]", (int *)&reg.accepted, reg.comment);
 	if(reg.accepted){
 		printf("Message successfully send\n");
 	}else{

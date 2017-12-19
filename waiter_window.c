@@ -71,12 +71,6 @@ typedef struct{
   char password[255];
 } User;
 typedef struct{
-  int ID;
-  int userID;
-  char text[255];
-  int status;
-} Message;
-typedef struct{
   bool accepted;
   char comment[255];
 } Request_result;
@@ -127,7 +121,6 @@ GtkWidget *window; //global window
 GtkWidget *grid; // global fixed container
 
 User *manager= NULL;
-int Role = 1; // get default role -> waiter
 
 log lg; 
 user us;
@@ -172,8 +165,7 @@ void listUsers();
 void listOrders();
 void listBooks();
 void listMenus();
-void listWaiters();
-void listTables();
+
 
 void editUser(GtkWidget *widget, gpointer i);
 void updateUser();
@@ -191,28 +183,8 @@ void editMenu(GtkWidget *widget, gpointer i);
 void updateMenu();
 void deleteMenu(GtkWidget *widget, gpointer i);
 
-void editWaiter(GtkWidget *widget, gpointer i);
-void updateWaiter();
-void deleteWaiter(GtkWidget *widget, gpointer i);
-void newWaiter();
-void saveNewWaiter();
-
-void printMessages(GtkWidget *widget, gpointer i);
-void sendMessage(GtkWidget *widget, gpointer i);
-void submitSendMessage();
-
-void editTable(GtkWidget *widget, gpointer i);
-void updateTable();
-void deleteTable(GtkWidget *widget, gpointer i);
-void createTable();
-void storeTable();
-
-
 //~~~~~~~~~~~~~~~~~~~~~~~~
 Employee *checkForUserExistense(char* name, char *password);
-Employee *getWaiterByID(int ID);
-void saveWaiter(Employee *employee, int type);
-
 User* getUserByID(int ID);
 void saveUser(User *user);
 //~~~~~~~~~~~~~~~~~~~~
@@ -226,12 +198,8 @@ Order* getOrderByID(int ID);
 void changeOrdStatus(Order *order, int status);
 //**************************************BOOK MANAGEMENT******************************************************
 Book *getBookByID(int ID);
-void saveTable(Table *table, int type);
 Table* getTableByID(int ID);
-void saveTable(Table *table, int type);
 void changeBkStatus(Book *book, int ID);
-
-void saveMessage(Message *message);
 //*************************************/BOOK MANAGEMENT******************************************************
 
 
@@ -272,7 +240,6 @@ int main(int argc, char *argv[]) {
 
   return 0;
 }
-
 void mainWind(){
   deleteChildren();
   GtkWidget *button1;
@@ -337,26 +304,24 @@ void submitLogin() {
     Employee *manager = checkForUserExistense(name, password);
     if(manager != NULL){
       printf(ANSI_COLOR_GREEN "User found!\n" ANSI_COLOR_GREEN);
-      if(manager->role == 0){
-        Role = 0;
-      }
       dashboard();
     }else{
       printf(ANSI_COLOR_RED "Wrong email or password!\n" ANSI_COLOR_RESET);
       show_info("Wrong email or password!");  
     }
-    free(manager);
   }
 }
 void dashboard(){
   deleteChildren();
+  GtkWidget *label1;
+  GtkWidget *label2;
+  GtkWidget *label3;
 
   GtkWidget *button1;
   GtkWidget *button2;
   GtkWidget *button3;
   GtkWidget *button4;
-  GtkWidget *button5;
-  GtkWidget *button6;
+  
 
   GtkWidget *logoutBut;
   
@@ -365,29 +330,21 @@ void dashboard(){
   button2 = gtk_button_new_with_label("Managing orders");
   button3 = gtk_button_new_with_label("Managing books");
   button4 = gtk_button_new_with_label("Managing menu");
-  button5 = gtk_button_new_with_label("Managing waiters");
-  button6 = gtk_button_new_with_label("Managing tables");
   
   logoutBut = gtk_button_new_with_label("Log Out");
 
-  gtk_grid_attach(GTK_GRID(grid), button3, 1, 1, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), button1, 1,  1, 1, 1);
   gtk_grid_attach(GTK_GRID(grid), button2, 2, 1, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), button6, 1, 2, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), button3, 1, 2, 1, 1);
   gtk_grid_attach(GTK_GRID(grid), button4, 2, 2, 1, 1);
-  
 
   gtk_grid_attach(GTK_GRID(grid), logoutBut, 3, 1, 1, 1);
-  if(Role == 0){
-    gtk_grid_attach(GTK_GRID(grid), button5, 1, 3, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), button1, 2, 3, 1, 1);
-    g_signal_connect(G_OBJECT(button1), "clicked", G_CALLBACK(listUsers), NULL);
-    g_signal_connect(G_OBJECT(button5), "clicked", G_CALLBACK(listWaiters), NULL);
-  }
+
+
+  g_signal_connect(G_OBJECT(button1), "clicked", G_CALLBACK(listUsers), NULL);
   g_signal_connect(G_OBJECT(button2), "clicked", G_CALLBACK(listOrders), NULL);
   g_signal_connect(G_OBJECT(button3), "clicked", G_CALLBACK(listBooks), NULL);
   g_signal_connect(G_OBJECT(button4), "clicked", G_CALLBACK(listMenus), NULL);
-  g_signal_connect(G_OBJECT(button6), "clicked", G_CALLBACK(listTables), NULL);
-
   g_signal_connect(G_OBJECT(logoutBut), "clicked", G_CALLBACK(login), NULL);
   g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
   gtk_widget_show_all(window);
@@ -425,7 +382,7 @@ void listUsers(){
 
   GtkWidget *backBut;
   backBut = gtk_button_new_with_label("Back");
-  gtk_grid_attach(GTK_GRID(grid), backBut, 8, 1, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), backBut, 7, 1, 1, 1);
   /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
   char query[512] = "SELECT * FROM Users";
   char result[1024];
@@ -469,16 +426,8 @@ void listUsers(){
     GtkWidget *delete = gtk_button_new_with_label("delete");
     gtk_grid_attach(GTK_GRID(grid), delete, 6, j+2, 1, 1);
 
-    GtkWidget *messag = gtk_button_new_with_label("messages");
-    gtk_grid_attach(GTK_GRID(grid), messag, 7, j+2, 1, 1);
-
-    GtkWidget *send = gtk_button_new_with_label("send message");
-    gtk_grid_attach(GTK_GRID(grid), send, 8, j+2, 1, 1);
-
-    g_signal_connect(G_OBJECT(send),"clicked", G_CALLBACK(sendMessage), ((gpointer) (glong) (users[j].ID)));
-    g_signal_connect(G_OBJECT(messag),"clicked", G_CALLBACK(printMessages), ((gpointer) (glong) (users[j].ID)));
-    g_signal_connect(G_OBJECT(delete),"clicked", G_CALLBACK(deleteUser), ((gpointer) (glong) (users[j].ID)));
-    g_signal_connect(G_OBJECT(edit),"clicked", G_CALLBACK(editUser), ((gpointer) (glong) (users[j].ID)));
+      g_signal_connect(G_OBJECT(delete),"clicked", G_CALLBACK(deleteUser), ((gpointer) (glong) (users[j].ID)));
+      g_signal_connect(G_OBJECT(edit),"clicked", G_CALLBACK(editUser), ((gpointer) (glong) (users[j].ID)));
   }
  
   g_signal_connect(G_OBJECT(backBut), "clicked", G_CALLBACK(dashboard), NULL);
@@ -581,6 +530,7 @@ void deleteUser(GtkWidget *widget, gpointer i){
  
   listUsers();
 }
+
 void listOrders(){
   deleteChildren();
 
@@ -999,6 +949,7 @@ void editBook(GtkWidget *widget, gpointer i){
   g_signal_connect(update, "clicked", G_CALLBACK(updateBook), NULL);  
   g_signal_connect(backBut, "clicked", G_CALLBACK(listBooks), NULL);  
   g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
+ 
 }
 void updateBook(){
   // printf("Dish:%s\n", gtk_entry_get_text (GTK_ENTRY(od.entry2)));
@@ -1196,12 +1147,13 @@ void editMenu(GtkWidget *widget, gpointer i){
   mn.entry3 = entry3;
   mn.entry4 = entry4;
   mn.id = ID;
-  free(dish);
+
   gtk_widget_show_all(window);
 
   g_signal_connect(update, "clicked", G_CALLBACK(updateMenu), NULL);  
   g_signal_connect(backBut, "clicked", G_CALLBACK(listMenus), NULL);  
   g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
+  
 }
 void updateMenu(){
   Dish *dish = malloc(sizeof(Dish));  
@@ -1239,568 +1191,8 @@ void deleteMenu(GtkWidget *widget, gpointer i){
   free(dish);
   listMenus();
 }
-void listWaiters(){
-  deleteChildren();
- 
-  gtk_grid_set_column_spacing(GTK_GRID(grid), 5);
-  gtk_grid_set_row_spacing(GTK_GRID(grid), 5);
-  
-  GtkWidget *number = gtk_label_new(NULL);  
-  gtk_label_set_justify(GTK_LABEL(number), GTK_JUSTIFY_LEFT);
-  gtk_label_set_markup(GTK_LABEL(number), "<b>#</b>");
-  gtk_grid_attach(GTK_GRID(grid), number, 0, 1, 1, 1);
 
-  GtkWidget *name = gtk_label_new(NULL);  
-  gtk_label_set_justify(GTK_LABEL(name), GTK_JUSTIFY_LEFT);
-  gtk_label_set_markup(GTK_LABEL(name), "<b>name</b>");
-  gtk_grid_attach(GTK_GRID(grid), name, 1, 1, 1, 1);
 
-  GtkWidget *email = gtk_label_new(NULL);
-  gtk_label_set_justify(GTK_LABEL(email), GTK_JUSTIFY_LEFT);
-  gtk_label_set_markup(GTK_LABEL(email), "<b>login</b>");
-  gtk_grid_attach(GTK_GRID(grid), email, 2, 1, 1, 1);
-
-  GtkWidget *password = gtk_label_new(NULL);
-  gtk_label_set_justify(GTK_LABEL(password), GTK_JUSTIFY_LEFT);
-  gtk_label_set_markup(GTK_LABEL(password), "<b>password</b>");
-  gtk_grid_attach(GTK_GRID(grid), password, 3, 1, 1, 1);
-
-  GtkWidget *role = gtk_label_new(NULL);
-  gtk_label_set_justify(GTK_LABEL(role), GTK_JUSTIFY_LEFT);
-  gtk_label_set_markup(GTK_LABEL(role), "<b>role</b>");
-  gtk_grid_attach(GTK_GRID(grid), role, 4, 1, 1, 1);
-
-  GtkWidget *backBut;
-  backBut = gtk_button_new_with_label("Back");
-  gtk_grid_attach(GTK_GRID(grid), backBut, 7, 1, 1, 1);
-  /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-
-  char query[512] = "SELECT * FROM Employees WHERE Role = 1";
-  char result[1024];
-  send(server_socket, query, sizeof(query), 0);
-  int numOfRows;
-  recv(server_socket, &numOfRows, sizeof(int), 0);
-  if(numOfRows > 0){
-    Employee employees[numOfRows];
-    for(int i = 0; i < numOfRows; i++){
-      recv(server_socket, result, sizeof(result), 0);
-      sscanf(result, " '%d' '%[^']' '%[^']' '%[^']' '%d'", &(employees[i].ID), employees[i].name, employees[i].login, employees[i].password, &(employees[i].role));
-      }
-      for(int j = 0; j < numOfRows; j++)
-      {
-        gchar* index;
-        index = g_strdup_printf("%d", employees[j].ID);
-
-        GtkWidget *number = gtk_label_new(index);
-        gtk_grid_attach(GTK_GRID(grid), number, 0, j+2, 1, 1);
-
-        GtkWidget *name = gtk_label_new(employees[j].name);
-        gtk_grid_attach(GTK_GRID(grid), name, 1, j+2, 1, 1);
-
-        GtkWidget *email = gtk_label_new(employees[j].login);
-        gtk_grid_attach(GTK_GRID(grid), email, 2, j+2, 1, 1);
-
-        GtkWidget *password = gtk_label_new(employees[j].password);
-        gtk_grid_attach(GTK_GRID(grid), password, 3, j+2, 1, 1);
-
-        GtkWidget *role = gtk_label_new("waiter");
-        gtk_grid_attach(GTK_GRID(grid), role, 4, j+2, 1, 1);
-
-        GtkWidget *edit = gtk_button_new_with_label("edit");
-        gtk_grid_attach(GTK_GRID(grid), edit, 5, j+2, 1, 1);
-
-        GtkWidget *delete = gtk_button_new_with_label("delete");
-        gtk_grid_attach(GTK_GRID(grid), delete, 6, j+2, 1, 1);
-
-        g_signal_connect(G_OBJECT(delete),"clicked", G_CALLBACK(deleteWaiter), ((gpointer) (glong) (employees[j].ID)));
-        g_signal_connect(G_OBJECT(edit),"clicked", G_CALLBACK(editWaiter), ((gpointer) (glong) (employees[j].ID)));
-      }
-  }
-  GtkWidget *create = gtk_button_new_with_label("create");
-  gtk_grid_attach(GTK_GRID(grid), create, 1, numOfRows+2, 1, 1);
-  /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-  g_signal_connect(G_OBJECT(create), "clicked", G_CALLBACK(newWaiter), NULL);
-  g_signal_connect(G_OBJECT(backBut), "clicked", G_CALLBACK(dashboard), NULL);
-  g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
-  
-  gtk_widget_show_all(window);
-}
-void editWaiter(GtkWidget *widget, gpointer i){
-  deleteChildren();
-  int ID = ((gint) (glong) (i));
-  GtkWidget *label1;
-  GtkWidget *label2;
-  GtkWidget *label3;
-
-  label1 = gtk_label_new("Name:");
-  label2 = gtk_label_new("Login:");
-  label3 = gtk_label_new("Password:");
-
-  GtkWidget *entry1;
-  GtkWidget *entry2;
-  GtkWidget *entry3;
-
-  entry1 = gtk_entry_new();
-  entry2 = gtk_entry_new();
-  entry3 = gtk_entry_new();
-  /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-  Employee *waiter = getWaiterByID(ID);
-  gtk_entry_set_text(GTK_ENTRY(entry1), waiter->name);
-  gtk_entry_set_width_chars (GTK_ENTRY(entry1), 60);
-  gtk_entry_set_text(GTK_ENTRY(entry2), waiter->login);
-  gtk_entry_set_max_length (GTK_ENTRY(entry2),12);
-  gtk_entry_set_width_chars (GTK_ENTRY(entry2), 60);
-  gtk_entry_set_text(GTK_ENTRY(entry3), waiter->password);
-  gtk_entry_set_width_chars (GTK_ENTRY(entry3), 60);
-  /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-
-  GtkWidget *backBut;
-  backBut = gtk_button_new_with_label("back");
-  GtkWidget *update;
-  update = gtk_button_new_with_label("update");
-
-  gtk_grid_attach(GTK_GRID(grid), label1, 1, 1, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), label2, 1, 2, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), label3, 1, 3, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), entry1, 2, 1, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), entry2, 2, 2, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), entry3, 2, 3, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), backBut, 3, 1, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), update, 2, 4, 1, 1);
-
-
-  us.entry1 = entry1;
-  us.entry2 = entry2;
-  us.entry3 = entry3;
-  us.id = ID;
-
-  gtk_widget_show_all(window);
-  free(waiter);
-  g_signal_connect(update, "clicked", G_CALLBACK(updateWaiter), NULL);  
-  g_signal_connect(backBut, "clicked", G_CALLBACK(listWaiters), NULL);  
-  g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
-}
-void updateWaiter(){
-  Employee *waiter = malloc(sizeof(Employee));
-  sprintf(waiter->name,"%s",gtk_entry_get_text (GTK_ENTRY(us.entry1)));
-  sprintf(waiter->login,"%s",gtk_entry_get_text (GTK_ENTRY(us.entry2)));
-  sprintf(waiter->password,"%s",gtk_entry_get_text (GTK_ENTRY(us.entry3)));
-  waiter->role = 1;
-  waiter->ID = us.id;
-  saveWaiter(waiter, 1);
-  free(waiter);
-  listWaiters();  
-}
-void deleteWaiter(GtkWidget *widget, gpointer i){
-  deleteChildren();
-  int ID = ((gint) (glong) (i));
-  int numOfRows;
-  Request_result reg;
-  char request_result_string[256];
-  Employee *waiter = getWaiterByID(ID);
-  if(waiter != NULL){
-    char query[512];
-    sprintf(query, "DELETE FROM Employees WHERE ID = %d", waiter->ID);
-
-    send(server_socket, query, sizeof(query), 0);
-    recv(server_socket, &numOfRows, sizeof(int), 0);
-
-    recv(server_socket, request_result_string, sizeof(request_result_string), 0);
-    sscanf(request_result_string, "%d `%[^`]", (int *)&reg.accepted, reg.comment);
-
-    if(reg.accepted){
-      show_info("Waiter deleted successfully");
-      printf("Waiter Successfully deleted\n");
-    }else{
-      show_info(reg.comment);
-      printf("%s\n",reg.comment);
-    }
-    free(waiter);
-  }
- 
-  listWaiters();
-}
-void newWaiter(){
-  deleteChildren();
-  GtkWidget *label1;
-  GtkWidget *label2;
-  GtkWidget *label3;
-
-  label1 = gtk_label_new("Name:");
-  label2 = gtk_label_new("Login:");
-  label3 = gtk_label_new("Password:");
-
-  GtkWidget *entry1;
-  GtkWidget *entry2;
-  GtkWidget *entry3;
-
-  entry1 = gtk_entry_new();
-  entry2 = gtk_entry_new();
-  entry3 = gtk_entry_new();
-
-  gtk_entry_set_width_chars (GTK_ENTRY(entry1), 60);
-  gtk_entry_set_width_chars (GTK_ENTRY(entry2), 60);
-  gtk_entry_set_width_chars (GTK_ENTRY(entry3), 60);
-  /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-  /*  Employee *waiter = getWaiterByID(ID);
-  gtk_entry_set_text(GTK_ENTRY(entry1), waiter->name);
-  
-  gtk_entry_set_text(GTK_ENTRY(entry2), waiter->login);
-  gtk_entry_set_max_length (GTK_ENTRY(entry2),12);
- 
-  gtk_entry_set_text(GTK_ENTRY(entry3), waiter->password);
-  */
-  /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-
-  GtkWidget *backBut;
-  backBut = gtk_button_new_with_label("back");
-  GtkWidget *update;
-  update = gtk_button_new_with_label("save");
-
-  gtk_grid_attach(GTK_GRID(grid), label1, 1, 1, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), label2, 1, 2, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), label3, 1, 3, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), entry1, 2, 1, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), entry2, 2, 2, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), entry3, 2, 3, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), backBut, 3, 1, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), update, 2, 4, 1, 1);
-
-
-  us.entry1 = entry1;
-  us.entry2 = entry2;
-  us.entry3 = entry3;
-  
-
-  gtk_widget_show_all(window);
-
-  g_signal_connect(update, "clicked", G_CALLBACK(saveNewWaiter), NULL);  
-  g_signal_connect(backBut, "clicked", G_CALLBACK(listWaiters), NULL);  
-  g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
-}
-void saveNewWaiter(){
-  Employee *waiter = malloc(sizeof(Employee));
-  sprintf(waiter->name,"%s",gtk_entry_get_text (GTK_ENTRY(us.entry1)));
-  sprintf(waiter->login,"%s",gtk_entry_get_text (GTK_ENTRY(us.entry2)));
-  sprintf(waiter->password,"%s",gtk_entry_get_text (GTK_ENTRY(us.entry3)));
-  waiter->role = 1;
-  saveWaiter(waiter, 0);
-  free(waiter);
-  listWaiters(); 
-}
-void listTables(){
-  deleteChildren();
-
-  GtkWidget *number = gtk_label_new(NULL);  
-  gtk_label_set_markup(GTK_LABEL(number), "<b>#</b>");
-  gtk_grid_attach(GTK_GRID(grid), number, 0, 1, 1, 1);
-
-  GtkWidget *name = gtk_label_new(NULL);  
-  gtk_label_set_markup(GTK_LABEL(name), "<b>№People</b>");
-  gtk_grid_attach(GTK_GRID(grid), name, 1, 1, 1, 1);
-
-  GtkWidget *stat = gtk_label_new(NULL);
-  gtk_label_set_markup(GTK_LABEL(stat), "<b>Status</b>");
-  gtk_grid_attach(GTK_GRID(grid), stat, 2, 1, 1, 1);
-
-
-  GtkWidget *backBut;
-  backBut = gtk_button_new_with_label("Back");
-  gtk_grid_attach(GTK_GRID(grid), backBut, 5, 1, 1, 1);
-  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  char query[512] = "SELECT * FROM Tables";
-  char result[1024];
-  send(server_socket, query, sizeof(query), 0);
-  int numOfRows;
-  recv(server_socket, &numOfRows, sizeof(int), 0);
-  if(numOfRows > 0){
-    Table tables[numOfRows];
-    for(int i = 0; i < numOfRows; i++){
-      recv(server_socket, result, sizeof(result), 0);
-      sscanf(result, " '%d' '%d' '%d'", &(tables[i].ID), &(tables[i].noOfPeople), &(tables[i].status));
-    }
-    for(int i = 0; i < numOfRows; i++){
-      gchar* index;
-      index = g_strdup_printf("%d", tables[i].ID);
-
-      GtkWidget *number = gtk_label_new(index);
-      gtk_grid_attach(GTK_GRID(grid), number, 0, i+2, 1, 1);
-
-      index = g_strdup_printf("%d", tables[i].noOfPeople);
-      GtkWidget *name = gtk_label_new(index);
-      gtk_grid_attach(GTK_GRID(grid), name, 1, i+2, 1, 1);
-
-      char status[32];//status of the order
-      if(tables[i].status == 0)
-        strcpy(status, "Not available");
-      if(tables[i].status == 1)
-        strcpy(status, "Available");  
-      GtkWidget *stat = gtk_label_new(status);
-      gtk_grid_attach(GTK_GRID(grid), stat, 2, i+2, 1, 1);
-
-      GtkWidget *edit = gtk_button_new_with_label("edit");
-      gtk_grid_attach(GTK_GRID(grid), edit, 3, i+2, 1, 1);
-
-      GtkWidget *delete = gtk_button_new_with_label("delete");  
-      gtk_grid_attach(GTK_GRID(grid), delete, 4, i+2, 1, 1);
-
-      g_signal_connect(G_OBJECT(delete),"clicked", G_CALLBACK(deleteTable), ((gpointer) (glong) (tables[i].ID)));
-      g_signal_connect(G_OBJECT(edit),"clicked", G_CALLBACK(editTable), ((gpointer) (glong) (tables[i].ID)));
- 
-    }
-  }
-  GtkWidget *create = gtk_button_new_with_label("create");  
-  gtk_grid_attach(GTK_GRID(grid), create, 1, numOfRows+2, 1, 1);
-  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-  g_signal_connect(G_OBJECT(create),"clicked", G_CALLBACK(createTable), NULL);
-  g_signal_connect(G_OBJECT(backBut), "clicked", G_CALLBACK(dashboard), NULL);
-  g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
-  
-  gtk_widget_show_all(window); 
-}
-void editTable(GtkWidget *widget, gpointer i){
-  deleteChildren();
-  GtkWidget *label1;
-  GtkWidget *label2;
-
-
-  label1 = gtk_label_new("№People:");
-  label2 = gtk_label_new("Status:");
-
-  GtkWidget *entry1;
-  GtkWidget *entry2;
-
-  GtkAdjustment *adjustment = gtk_adjustment_new(0,0,10,1,0, 0);
-  entry1 = gtk_spin_button_new(GTK_ADJUSTMENT(adjustment), 1, 0);
-  entry2 = gtk_combo_box_text_new();
-
-
-  gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (entry2), "Not available");
-  gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (entry2), "Available");
-
-  int ID = ((gint) (glong) (i));
-  Table *table = getTableByID(ID);
-
-  gtk_entry_set_width_chars (GTK_ENTRY(entry1), 60);
-  gtk_spin_button_set_value (GTK_SPIN_BUTTON(entry1), table->noOfPeople);
-
-  /* Choose to set the first row as the active one by default, from the beginning */
-  gtk_combo_box_set_wrap_width (GTK_COMBO_BOX(entry2), 60);
-  gtk_combo_box_set_active (GTK_COMBO_BOX (entry2), table->status);
-
-  GtkWidget *backBut;
-  backBut = gtk_button_new_with_label("back");
-  GtkWidget *update;
-  update = gtk_button_new_with_label("update");
-
-  gtk_grid_attach(GTK_GRID(grid), label1, 1, 1, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), label2, 1, 2, 1, 1);
-
-
-  gtk_grid_attach(GTK_GRID(grid), entry1, 2, 1, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), entry2, 2, 2, 1, 1);
-
-  gtk_grid_attach(GTK_GRID(grid), backBut,3, 1, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), update, 2, 3, 1, 1);
-
- 
-  mn.entry1 = entry1;
-  mn.entry2 = entry2;
-  mn.id = ID;
-  free(table);
-
-  gtk_widget_show_all(window);
-
-  g_signal_connect(update, "clicked", G_CALLBACK(updateTable), NULL);  
-  g_signal_connect(backBut, "clicked", G_CALLBACK(listTables), NULL);  
-  g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
-}
-void updateTable(){
-  Table *table = malloc(sizeof(Table));  
-  table->noOfPeople =gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(mn.entry1));
-  table->status =gtk_combo_box_get_active(GTK_COMBO_BOX(mn.entry2));
-  table->ID = mn.id;
-  saveTable(table, 1);
-  free(table);
-  listTables();
-}
-void createTable(){
-  deleteChildren();
-  GtkWidget *label1;
-  GtkWidget *label2;
-
-
-  label1 = gtk_label_new("№People:");
-  label2 = gtk_label_new("Status:");
-
-  GtkWidget *entry1;
-  GtkWidget *entry2;
-
-  GtkAdjustment *adjustment = gtk_adjustment_new(0,0,10,1,0, 0);
-  entry1 = gtk_spin_button_new(GTK_ADJUSTMENT(adjustment), 1, 0);
-  entry2 = gtk_combo_box_text_new();
-
-
-  gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (entry2), "Not available");
-  gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (entry2), "Available");
-
-
-  GtkWidget *backBut;
-  backBut = gtk_button_new_with_label("back");
-  GtkWidget *update;
-  update = gtk_button_new_with_label("save");
-
-  gtk_grid_attach(GTK_GRID(grid), label1, 1, 1, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), label2, 1, 2, 1, 1);
-
-
-  gtk_grid_attach(GTK_GRID(grid), entry1, 2, 1, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), entry2, 2, 2, 1, 1);
-
-  gtk_grid_attach(GTK_GRID(grid), backBut,3, 1, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), update, 2, 3, 1, 1);
-
- 
-  mn.entry1 = entry1;
-  mn.entry2 = entry2;
-
-  gtk_widget_show_all(window);
-
-  g_signal_connect(update, "clicked", G_CALLBACK(storeTable), NULL);  
-  g_signal_connect(backBut, "clicked", G_CALLBACK(listMenus), NULL);  
-  g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
-}
-void storeTable(){
-  Table *table = malloc(sizeof(Table));  
-  table->noOfPeople =gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(mn.entry1));
-  table->status =gtk_combo_box_get_active(GTK_COMBO_BOX(mn.entry2));
-  saveTable(table, 0);
-  free(table);
-  listTables();
-}
-void deleteTable(GtkWidget *widget, gpointer i){
-  int ID = ((gint) (glong) (i));
-  Table *table = getTableByID(ID);
-  if(table != NULL){
-    int numOfRows;
-    Request_result reg;
-    char request_result_string[256];
-    char query[512];
-    sprintf(query, "DELETE FROM Tables WHERE ID = %d", table->ID);
-    send(server_socket, query, sizeof(query), 0);
-    recv(server_socket, &numOfRows, sizeof(int), 0);
-    recv(server_socket, request_result_string, sizeof(request_result_string), 0);
-    sscanf(request_result_string, "%d `%[^`]", (int *)&reg.accepted, reg.comment);
-    if(reg.accepted){
-      show_info("Table Successfully deleted");
-      printf("Table Successfully deleted\n");
-    }else{
-      show_info(reg.comment);
-      printf("%s\n", reg.comment);
-    }
-  }
-  free(table);
-  listTables();
-}
-void printMessages(GtkWidget *widget, gpointer i){
-  deleteChildren();  
-  int ID = ((gint) (glong) (i));
-
-  GtkWidget *number = gtk_label_new(NULL);  
-  gtk_label_set_justify(GTK_LABEL(number), GTK_JUSTIFY_LEFT);
-  gtk_label_set_markup(GTK_LABEL(number), "<b>#</b>");
-  gtk_grid_attach(GTK_GRID(grid), number, 0, 0, 1, 1);
-
-  GtkWidget *text = gtk_label_new(NULL);  
-  gtk_label_set_justify(GTK_LABEL(text), GTK_JUSTIFY_LEFT);
-  gtk_label_set_markup(GTK_LABEL(text), "<b>text</b>");
-  gtk_grid_attach(GTK_GRID(grid), text, 1, 0, 1, 1);
-
-  GtkWidget *stat = gtk_label_new(NULL);
-  gtk_label_set_justify(GTK_LABEL(stat), GTK_JUSTIFY_LEFT);
-  gtk_label_set_markup(GTK_LABEL(stat), "<b>status</b>");
-  gtk_grid_attach(GTK_GRID(grid), stat, 2, 0, 1, 1);
-  
-  GtkWidget *backBut;
-  backBut = gtk_button_new_with_label("Back");
-  gtk_grid_attach(GTK_GRID(grid), backBut, 3, 0, 1, 1);
-
-  char query[512];
-  sprintf(query, "SELECT * FROM Messages WHERE ID = %d", ID);
-  char result[1024];
-  send(server_socket, query, sizeof(query), 0);
-  int numOfRows;
-  recv(server_socket, &numOfRows, sizeof(int), 0);
-  if(numOfRows > 0){
-    Message messages[numOfRows];
-    for(int i = 0; i < numOfRows; i++){
-      recv(server_socket, result, sizeof(result), 0);
-      sscanf(result, " '%d' '%d' '%[^']' '%d'", &(messages[i].ID), &(messages[i].userID), messages[i].text, &(messages[i].status));
-    }
-    for(int i = 0; i < numOfRows; i++){
-      gchar* index;
-      index = g_strdup_printf("%d", messages[i].ID);
-
-      GtkWidget *number = gtk_label_new(index);
-      gtk_grid_attach(GTK_GRID(grid), number, 0, i+1, 1, 1);
-
-      GtkWidget *text = gtk_label_new(messages[i].text);
-      gtk_grid_attach(GTK_GRID(grid), text, 1, i+1, 1, 1);
-     
-      index = g_strdup_printf("%d", messages[i].status);
-      GtkWidget *stat = gtk_label_new(index);
-      gtk_grid_attach(GTK_GRID(grid), stat, 2, i+1, 1, 1);
-    }
-  }
-
-  g_signal_connect(G_OBJECT(backBut), "clicked", G_CALLBACK(listUsers), NULL);
-  g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
-  
-  gtk_widget_show_all(window);
-}
-void sendMessage(GtkWidget *widget, gpointer i){
-  deleteChildren();
-  int ID = ((gint) (glong) (i));
-  GtkWidget *label1;
-  GtkWidget *entry1;
-
-  GtkWidget *backBut;
-  GtkWidget *send;
-  char msg[25];
-  sprintf(msg,"Sending message to user - %d", ID);
-  label1 = gtk_label_new(msg);
-  entry1 = gtk_entry_new();
-
-  backBut = gtk_button_new_with_label("Back");
-  send = gtk_button_new_with_label("Send");
-
-  gtk_grid_set_column_spacing(GTK_GRID(grid), 5);
-  gtk_grid_set_row_spacing(GTK_GRID(grid), 5);
-
-  gtk_grid_attach(GTK_GRID(grid), label1, 0,  0, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), entry1, 0, 1, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), send, 1, 1, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), backBut, 2, 0, 1, 1);
-
-  us.entry1 = entry1;
-  us.id = ID;
-
-  g_signal_connect(backBut, "clicked", G_CALLBACK(listUsers), NULL);  
-  g_signal_connect(send,"clicked", G_CALLBACK(submitSendMessage), NULL);
-  g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL); 
-
-  gtk_widget_show_all(window);  
-}
-void submitSendMessage(){
-  Message *message = malloc(sizeof(Message));
-  message->userID = us.id;
-  message->status = 0;
-  sprintf(message->text,"%s",gtk_entry_get_text (GTK_ENTRY(us.entry1)));
-  saveMessage(message);
-  free(message);
-  listUsers();
-}
 Employee *checkForUserExistense(char* name, char *password){
   Employee *manager = NULL;
   char query[512];
@@ -1817,21 +1209,6 @@ Employee *checkForUserExistense(char* name, char *password){
     sscanf(result, " '%d' '%[^']' '%[^']' '%[^']' '%d'", &(manager->ID), manager->name, manager->login, manager->password, &(manager->role));
   }
   return manager;
-}
-Employee *getWaiterByID(int ID){
-  char query[512];
-  char result[1024];
-  Employee *waiter = NULL;
-  sprintf(query, "SELECT * FROM Employees WHERE ID = %d AND Role = 1", ID);
-  int count;
-  send(server_socket, query, sizeof(query), 0);
-  recv(server_socket, &count, sizeof(int), 0);
-  if(count == 1){
-    waiter = malloc(sizeof(Employee));
-    recv(server_socket, result, sizeof(result), 0);
-    sscanf(result, " '%d' '%[^']' '%[^']' '%[^']' '%d'", &(waiter->ID), waiter->name, waiter->login, waiter->password, &(waiter->role));
-  }
-  return waiter;
 }
 User* getUserByID(int ID){
   User *user = NULL;
@@ -1943,26 +1320,6 @@ void changeBkStatus(Book *book, int status){
     show_info(reg.comment);
   }
 }
-void changeOrdStatus(Order *order, int status){
-  Request_result reg;
-  char request_result_string[256];
-  char query[512];
-  int numOfRows;
-  sprintf(query, "UPDATE Orders SET Status = %d WHERE ID = %d", status, order->ID);
-  send(server_socket, query, sizeof(query), 0);
-  recv(server_socket, &numOfRows, sizeof(int), 0);
-
-  recv(server_socket, request_result_string, sizeof(request_result_string), 0);
-  sscanf(request_result_string, "%d `%[^`]", (int *)&reg.accepted, reg.comment);
-  if(reg.accepted){
-    show_info("Order status Successfully changed");
-    printf("Order status Successfully changed\n");
-  }
-  else{
-    printf("%s",reg.comment);
-    show_info(reg.comment);
-  }
-}
 void saveUser(User *user){
   Request_result reg;
   char request_result_string[256];
@@ -1982,6 +1339,7 @@ void saveUser(User *user){
     printf("%s", reg.comment);
   }
 }
+
 //0 --> create, 1 --> update
 void saveDish(Dish *dish, int type){
   Request_result reg;
@@ -2005,68 +1363,25 @@ void saveDish(Dish *dish, int type){
     printf("%s",reg.comment);
   }
 }
-void saveWaiter(Employee *employee, int type){
+
+void changeOrdStatus(Order *order, int status){
   Request_result reg;
   char request_result_string[256];
   char query[512];
   int numOfRows;
-  if(type == 0)
-    sprintf(query, "INSERT INTO Employees(Name, Login, Password, Role) VALUES ('%s', '%s', '%s', %d)", employee->name, employee->login, employee->password, employee->role);
-  else
-    sprintf(query, "UPDATE Employees SET Name = '%s', Login = '%s', password = '%s', Role = %d WHERE ID = %d", employee->name, employee->login, employee->password, employee->role, employee->ID);
+  sprintf(query, "UPDATE Orders SET Status = %d WHERE ID = %d", status, order->ID);
   send(server_socket, query, sizeof(query), 0);
   recv(server_socket, &numOfRows, sizeof(int), 0);
+
   recv(server_socket, request_result_string, sizeof(request_result_string), 0);
   sscanf(request_result_string, "%d `%[^`]", (int *)&reg.accepted, reg.comment);
   if(reg.accepted){
-    show_info("Waiter successfully saved");
-    printf("Waiter successfully saved\n");
+    show_info("Order status Successfully changed");
+    printf("Order status Successfully changed\n");
   }
   else{
+    printf("%s",reg.comment);
     show_info(reg.comment);
-    printf("%s\n", reg.comment);
-  }
-}
-void saveMessage(Message *message){
-  Request_result reg;
-  char request_result_string[256];
-  char query[512];
-  int numOfRows;
-  sprintf(query, "INSERT INTO Messages(User_id, Text, Status) VALUES (%d, '%s', %d)", message->userID, message->text, message->status);
-  send(server_socket, query, sizeof(query), 0);
-  recv(server_socket, &numOfRows, sizeof(int), 0);
-  recv(server_socket, request_result_string, sizeof(request_result_string), 0);
-  sscanf(request_result_string, "%d `%[^`]", (int *)&reg.accepted, reg.comment);
-  if(reg.accepted){
-    show_info("Message successfully saved");
-    printf("Message successfully saved\n");
-  }
-  else{
-    show_info(reg.comment);
-    printf("%s\n", reg.comment);
-  }
-}
-void saveTable(Table *table, int type){
-  Request_result reg;
-  char request_result_string[256];
-  char query[512];
-  int numOfRows;
-  if(type == 0)
-    sprintf(query, "INSERT INTO Tables(No_of_people, Status) VALUES (%d, %d)", table->noOfPeople, table->status);
-  else
-    sprintf(query, "UPDATE Tables SET No_of_people = %d, Status = %d WHERE ID = %d", table->noOfPeople, table->status, table->ID);
-  send(server_socket, query, sizeof(query), 0);
-  recv(server_socket, &numOfRows, sizeof(int), 0);
-  recv(server_socket, request_result_string, sizeof(request_result_string), 0);
-  sscanf(request_result_string, "%d `%[^`]", (int *)&reg.accepted, reg.comment);
-  if(reg.accepted)
-  {
-    show_info("Table successfully saved");
-    printf("Table successfully saved\n");
-  }
-  else{
-    show_info(reg.comment);
-    printf("%s\n", reg.comment);
   }
 }
 

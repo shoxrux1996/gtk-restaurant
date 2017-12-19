@@ -487,15 +487,27 @@ void messages(){
 
     GtkWidget *number = gtk_label_new(index);
     gtk_grid_attach(GTK_GRID(grid), number, 0, i, 1, 1);
-
-    GtkWidget *label = gtk_label_new(message);
-    gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_LEFT);
+    char msg[255];
+    GtkWidget *label; 
+    if(status == 0){
+      sprintf(msg,"* * * new *     %s     * new * * *", message);
+      label = gtk_label_new(msg);
+    }
+    else{
+      sprintf(msg,"%s", message);
+      label = gtk_label_new(msg);
+    }
     gtk_grid_attach(GTK_GRID(grid), label, 1, i, 1, 1);
   }
   GtkWidget *backBut;
   backBut = gtk_button_new_with_label("Back");
   gtk_grid_attach(GTK_GRID(grid), backBut, 3, 0, 1, 1);
+  
+  sprintf(query, "UPDATE Messages SET Status = 1 WHERE User_id = %d AND Status = 0", user->ID);
+  send(server_socket, query, sizeof(query), 0);
+  recv(server_socket, &num_rows, sizeof(int), 0);
 
+  recv(server_socket, row_string, sizeof(row_string), 0);
   g_signal_connect(G_OBJECT(backBut), "clicked", G_CALLBACK(dashboard), NULL);
   g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
   gtk_widget_show_all(window);
@@ -529,7 +541,6 @@ void orderFood(){
 void chooseCategory(GtkWidget *widget, gpointer i){
   deleteChildren();
   int category_id = ((gint) (glong) (i));
- 
 
   char query[512];
   char row_string[1024];
