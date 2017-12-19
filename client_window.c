@@ -20,18 +20,12 @@
 #define ANSI_COLOR_RESET   "\x1b[0m"
 #define ANSI_COLOR_BLUE    "\x1b[34m"
 
-GtkWidget *window; //global window
-GtkWidget *grid; // global container grid
-char numb[10] = "0"; //number of messages
-
-
+//********************************************************************************
 typedef struct 
 {
   GtkWidget *entry1;
   GtkWidget *entry2;
 } log;
-log lg;
-
 typedef struct 
 {
   GtkWidget *entry1;
@@ -39,64 +33,21 @@ typedef struct
   GtkWidget *entry3;
   GtkWidget *entry4;
 } regist;
-regist rg;
-
 typedef struct  
 {
   GtkWidget *entry1;
   GtkWidget *entry2;
   GtkWidget *entry3;
 } bookSeats;
-bookSeats bs;
+
 typedef struct 
 {
   GtkWidget *entry1;
   GtkWidget *entry2;
   int id;
 }orderFoods;
-orderFoods of;
 
-void deleteChildren(){
-  GList *children, *iter;
-  
-  children = gtk_container_get_children(GTK_CONTAINER(grid));
-
-  for(iter = children; iter != NULL; iter = g_list_next(iter))
-     {
-       gtk_container_remove(GTK_CONTAINER(grid), GTK_WIDGET(iter->data));
-    
-     } 
-  
-  g_list_free(children);
-} 
-void show_info(gchar *inf) {
-
-  GtkWidget *dialog;
-  dialog = gtk_message_dialog_new(GTK_WINDOW(window),
-            GTK_DIALOG_DESTROY_WITH_PARENT,
-            GTK_MESSAGE_INFO,
-            GTK_BUTTONS_OK,"%s",
-            inf);
-  gtk_window_set_title(GTK_WINDOW(dialog), "Dialog");
-  gtk_dialog_run(GTK_DIALOG(dialog));
-  gtk_widget_destroy(dialog);
-}
-
-
-void mainWind();
-void registe();
-void login();
-void dashboard();
-void messages();
-void bookSeat();
-void submitLogin();
-void submitRegister();
-void submitBook();
-void chooseCategory(GtkWidget *widget, gpointer i);
-void chooseFood(GtkWidget *widget, gpointer i);
-void orderFood();
-void submitOrder();
-
+//**********************************************************************************
 typedef struct{
   int ID;
   char name[255];
@@ -128,15 +79,67 @@ typedef struct{
 } Request_result;
 
 
-User* authenticate(char *email, char *password);
+User *user= NULL; 
+//********************************************************
+log lg;
+regist rg;
+orderFoods of;
+bookSeats bs;
+//********************************************************
+GtkWidget *window; //global window
+GtkWidget *grid; // global container grid
+char numb[10] = "0"; //number of messages
 
+//*******************************************************
+User* authenticate(char *email, char *password);
 Request_result request_booking(User *, int, Time, char *);
 Request_result request_order(User *, int, int, char *);
 Request_result request_register(char *, char *, char *, char *);
+//******************************************************************
+void deleteChildren(){
+  GList *children, *iter;
+  
+  children = gtk_container_get_children(GTK_CONTAINER(grid));
+
+  for(iter = children; iter != NULL; iter = g_list_next(iter))
+     {
+       gtk_container_remove(GTK_CONTAINER(grid), GTK_WIDGET(iter->data));
+    
+     } 
+  
+  g_list_free(children);
+} 
+void show_info(gchar *inf) {
+
+  GtkWidget *dialog;
+  dialog = gtk_message_dialog_new(GTK_WINDOW(window),
+            GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_INFO,
+            GTK_BUTTONS_OK,"%s",
+            inf);
+  gtk_window_set_title(GTK_WINDOW(dialog), "Dialog");
+  gtk_dialog_run(GTK_DIALOG(dialog));
+  gtk_widget_destroy(dialog);
+}
+
+void mainWind();
+void registe();
+void login();
+void dashboard();
+void messages();
+void bookSeat();
+void submitLogin();
+void submitRegister();
+void submitBook();
+void chooseCategory(GtkWidget *widget, gpointer i);
+void chooseFood(GtkWidget *widget, gpointer i);
+void orderFood();
+void submitOrder();
+
 int createSocket();
 int server_socket;
-User *user= NULL;
- 
+//*********************************************************************
+
 int main(int argc, char *argv[]) {
 
   
@@ -231,8 +234,6 @@ void login() {
   g_signal_connect(backBut, "clicked", G_CALLBACK(mainWind), NULL);  
   g_signal_connect(loginBut, "clicked", G_CALLBACK(submitLogin), NULL);
   g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL); 
-  
-
 }
 void submitLogin() {
   
@@ -313,8 +314,6 @@ void registe(){
   g_signal_connect(G_OBJECT(window), "destroy",G_CALLBACK(gtk_main_quit), NULL); 
 
   gtk_widget_show_all(window);
-
-  
 }
 void submitRegister() {
   
@@ -341,7 +340,6 @@ void submitRegister() {
     printf( ANSI_COLOR_RED "%s\n" ANSI_COLOR_RESET, reg.comment);
     show_info(reg.comment);
   }
-
 }
 void dashboard(){
   char query[512];
@@ -435,7 +433,6 @@ void bookSeat(){
   g_signal_connect(G_OBJECT(backBut), "clicked", G_CALLBACK(dashboard), NULL);
   g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
   gtk_widget_show_all(window);
- 
 }
 void submitBook(GtkWidget *widget){
   int num_of_people;
@@ -461,7 +458,6 @@ void submitBook(GtkWidget *widget){
     show_info(booking.comment);
     printf( ANSI_COLOR_RED "%s\n" ANSI_COLOR_RESET, booking.comment);
   }
- 
 }
 void messages(){
   deleteChildren();
@@ -515,6 +511,8 @@ void messages(){
 void orderFood(){
   deleteChildren();
   int size = 4;
+  const char *meal[] = {"First meal", "Second meal", "Drinks", "Salad"};
+
   for(int i = 0; i < size; i++)
   {
     gchar* index;
@@ -523,7 +521,7 @@ void orderFood(){
     GtkWidget *number = gtk_label_new(index);
     gtk_grid_attach(GTK_GRID(grid), number, 0, i, 1, 1);
 
-    GtkWidget *button = gtk_button_new_with_label("Category");
+    GtkWidget *button = gtk_button_new_with_label(meal[i]);
     gtk_grid_attach(GTK_GRID(grid), button, 1, i, 1, 1);
 
     g_signal_connect(G_OBJECT(button),"clicked", G_CALLBACK(chooseCategory), ((gpointer) (glong) (i+1)));
@@ -536,7 +534,6 @@ void orderFood(){
   g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
   
   gtk_widget_show_all(window); 
-
 }
 void chooseCategory(GtkWidget *widget, gpointer i){
   deleteChildren();
@@ -646,9 +643,7 @@ void chooseFood(GtkWidget *widget, gpointer i){
 
   g_signal_connect(G_OBJECT(submitBut), "clicked", G_CALLBACK(submitOrder), NULL);
   g_signal_connect(G_OBJECT(backBut), "clicked", G_CALLBACK(orderFood), NULL);
-  g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
-  
- 
+  g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);   
 }
 void submitOrder(){
 
@@ -670,8 +665,7 @@ void submitOrder(){
   }
 
   sleep(2);
-  orderFood();
-  
+  orderFood(); 
 }
 
 User* authenticate(char *email, char *password){//return user struct on success, NULL otherwise
@@ -760,8 +754,6 @@ Request_result request_order(User *user, int meal_id, int num_of_portions, char 
 
   return order;
 }
-
-
 
 int createSocket(){
 
