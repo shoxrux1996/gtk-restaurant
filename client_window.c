@@ -21,9 +21,9 @@
 #define ANSI_COLOR_BLUE    "\x1b[34m"
 
 GtkWidget *window; //global window
-GtkWidget *grid; 
+GtkWidget *grid; // global container grid
 char numb[10] = "0"; //number of messages
-// global fixed container
+
 
 typedef struct 
 {
@@ -127,15 +127,9 @@ typedef struct{
   char comment[255]; 
 } Request_result;
 
-void menu();
-void login_menu();
-void register_menu();
-void dashboard_menu(User *user);
+
 User* authenticate(char *email, char *password);
-void booking_menu(User *user);
-void ordering_food_menu(User *user);
-int choose_meal(User *user, int);
-void messages_menu(User *user);
+
 Request_result request_booking(User *, int, Time, char *);
 Request_result request_order(User *, int, int, char *);
 Request_result request_register(char *, char *, char *, char *);
@@ -145,7 +139,7 @@ User *user= NULL;
  
 int main(int argc, char *argv[]) {
 
-  server_socket = createSocket();
+  
   gtk_init(&argc, &argv);
   window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
   g_object_ref_sink(window);
@@ -175,6 +169,7 @@ int main(int argc, char *argv[]) {
 
   gtk_container_add(GTK_CONTAINER(window), grid);
 
+  server_socket = createSocket();
   mainWind();
   gtk_main();
  
@@ -247,24 +242,21 @@ void submitLogin() {
 
   if(strcmp(email, "") == 0 || strcmp(password, "") == 0){
     show_info("All inputs are required! ");
-    login();
-  }
-  
-  user = authenticate(email, password);
-
-
-  if(user != NULL)
+  }else
   {
-    printf(ANSI_COLOR_GREEN "User found!\n" ANSI_COLOR_RESET);
-    sleep(1);
-    dashboard();
-  } 
-  else
-  {
-    printf(ANSI_COLOR_RED "Wrong email or password!\n" ANSI_COLOR_RESET);
-    sleep(2);
-    show_info("Wrong email or password!");
-    login();
+    user = authenticate(email, password);
+    if(user != NULL)
+    {
+      printf(ANSI_COLOR_GREEN "User found!\n" ANSI_COLOR_RESET);
+      sleep(1);
+      dashboard();
+    } 
+    else
+    {
+      printf(ANSI_COLOR_RED "Wrong email or password!\n" ANSI_COLOR_RESET);
+      sleep(1);
+      show_info("Wrong email or password!");
+    }
   }
 }
 void registe(){
